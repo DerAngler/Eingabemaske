@@ -1,6 +1,4 @@
-﻿###############################################################
-##### Diese Variablen können nach Bedarf angepasst werden #####
-###############################################################
+﻿##### Diese Variablen können nach Bedarf angepasst werden #####
 
 #Log definieren
 $LogPfad = "C:\Logs\Github\Eingabemaske\"
@@ -9,74 +7,86 @@ $LogName = $(Get-Date -Format "yyyyMMdd") + "_Eingabemaske.log"
 #Cim-Session Endpoint (Bei Planlosigkeit einfach so lassen)
 $RemoteFQDN = $null #$null oder leer = localhost 
 
-###############################################################
 ################### Ab hier nix mehr ändern ###################
-###############################################################
+function Darkmode {
+    param (
+        $WasDM
+    )
+    if($Darkmode -eq $TRUE){
+        $WasDM.ForeColor = "LightGray"
+        $WasDM.BackColor = "Black"
+    }
+}
 
 #Region Eingabemaske
 Add-Type -AssemblyName System.Windows.Forms
+[System.Windows.Forms.Application]::EnableVisualStyles()#Auskommentieren, wenns Probleme mit dem DateTimePicker gibt bzw. dessen Button
 
-#Main Form
+# Main Form
 $mainForm = New-Object System.Windows.Forms.Form
 $Font = New-Object System.Drawing.Font("Courier New", 12)
 $mainForm.Text = "Eingabemaske"
 $mainForm.Font = $Font
-$mainForm.ForeColor = "White"
-$mainForm.BackColor = "Black"
 $mainForm.Height = 382
 $mainForm.Width = 280
 $mainForm.MaximizeBox = $false
 $mainForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Fixed3D
 $mainForm.StartPosition = "CenterScreen"
 $mainForm.ShowIcon = $false
+Darkmode($mainForm)
 
-#Jobname Label
+# Jobname Label
 $JobnameLabel = New-Object System.Windows.Forms.Label
 $JobnameLabel.Text = "Jobname"
 $JobnameLabel.Location = "5, 10"
 $JobnameLabel.Height = 22
 $JobnameLabel.Width = 90
+Darkmode($JobnameLabel)
 $mainForm.Controls.Add($JobnameLabel)
 
-#Hostnames Label
+# Hostnames Label
 $HostnamesLabel = New-Object System.Windows.Forms.Label
 $HostnamesLabel.Text = "Hostnames"
 $HostnamesLabel.Location = "5, 45"
 $HostnamesLabel.Height = 22
 $HostnamesLabel.Width = 95
+Darkmode($HostnamesLabel)
 $mainForm.Controls.Add($HostnamesLabel)
 
-#Datum Label
+# Datum Label
 $DatumLabel = New-Object System.Windows.Forms.Label
 $DatumLabel.Text = "Datum"
 $DatumLabel.Location = "5, 180"
 $DatumLabel.Height = 22
 $DatumLabel.Width = 90
+Darkmode($DatumLabel)
 $mainForm.Controls.Add($DatumLabel)
 
-#Uhrzeit Label
+# Uhrzeit Label
 $UhrzeitLabel = New-Object System.Windows.Forms.Label
 $UhrzeitLabel.Text = "Uhrzeit"
 $UhrzeitLabel.Location = "5, 215"
 $UhrzeitLabel.Height = 22
 $UhrzeitLabel.Width = 90
+Darkmode($UhrzeitLabel)
 $mainForm.Controls.Add($UhrzeitLabel)
 
-#Neustart Label
+# Neustart Label
 $NeustartLabel = New-Object System.Windows.Forms.Label
 $NeustartLabel.Text = "Job-Neustart erlauben?"
 $NeustartLabel.Location = "5, 250"
 $NeustartLabel.Height = 22
 $NeustartLabel.Width = 230
+Darkmode($NeustartLabel)
 $mainForm.Controls.Add($NeustartLabel)
 
-#Jobname Auswahlfeld
+# Jobname Auswahlfeld
 $Job = New-Object System.Windows.Forms.Textbox
 $Job.Location = "100, 7"
 $Job.Width = "155"
 $mainForm.Controls.Add($Job)
 
-# Hostname Auswahlfeld
+# Hostnames Auswahlfeld
 $Hostnames = New-Object System.Windows.Forms.TextBox
 $Hostnames.Location = "100, 42"
 $Hostnames.Height = "125"
@@ -102,6 +112,7 @@ $Uhrzeit.Width = "155"
 $Uhrzeit.Format = [windows.forms.datetimepickerFormat]::custom
 $Uhrzeit.CustomFormat = "HH:mm"
 $Uhrzeit.ShowUpDown = $TRUE
+$Uhrzeit.BackColor = "Black"
 $mainForm.Controls.Add($Uhrzeit)
 
 # Neustart CheckBox
@@ -117,37 +128,40 @@ $Zuweisen.Width = "252"
 $Zuweisen.ForeColor = "Black"
 $Zuweisen.BackColor = "White"
 $Zuweisen.Text = "Zuweisung einplanen"
+Darkmode($Zuweisen)
 $Zuweisen.add_Click({Zuweisung_einplanen})
 $mainForm.Controls.Add($Zuweisen)
 
-#Task-Button
+# Task-Button
 $TasksButton = New-Object System.Windows.Forms.Button
 $TasksButton.Location = "5, 310"
 $TasksButton.Width = "124"
 $TasksButton.ForeColor = "Black"
 $TasksButton.BackColor = "White"
 $TasksButton.Text = "Tasks"
+Darkmode($TasksButton)
 $TasksButton.add_Click({Get-ScheduledTask -TaskPath "\Microsoft\Office\" | Out-GridView -OutputMode Multiple -Title Bara-Job-Scheduler | Get-ScheduledTaskInfo | Out-GridView -Title Bara-Job-Scheduler -PassThru})
 $mainForm.Controls.Add($TasksButton)
 
-#Log-Button
+# Log-Button
 $LogsButton = New-Object System.Windows.Forms.Button
 $LogsButton.Location = "133, 310"
 $LogsButton.Width = "124"
 $LogsButton.ForeColor = "Black"
 $LogsButton.BackColor = "White"
 $LogsButton.Text = "Logs"
+Darkmode($LogsButton)
 $LogsButton.add_Click({(explorer.exe $LogPfad)})
 $mainForm.Controls.Add($LogsButton)
 #Endregion Eingabemaske
 
-function Zuweisung_einplanen{
-    #Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt wurde
+function Zuweisung_einplanen {
+    # Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt wurde
     if(($mainForm.ActiveControl.Text -ne "Zuweisung einplanen")){
         exit
     }
 
-    #Variablen, welche immer gleich bleiben in der Schleife
+    # Variablen, welche immer gleich bleiben in der Schleife
     $HostArray = $($Hostnames.Text) -split "`r`n"
     $Jobname = $($Job.Text)
     $Neustart = $($Neustart.Checked)
@@ -156,30 +170,30 @@ function Zuweisung_einplanen{
     $Principal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
     $Initiator = whoami
 
-    #CimSession aufbauen
+    # CimSession aufbauen
     if([string]::IsNullOrEmpty($RemoteFQDN)){
         $CimSession = New-CimSession
     }else{
         $CimSession = New-CimSession -ComputerName $RemoteFQDN -Credential Get-Credential
     }
 
-    #Log-Datei erstellen und wenns Not tut auch Pfad
+    # Log-Datei erstellen und wenns Not tut auch Pfad
     $LogDatei = ($LogPfad+"\"+$LogName).Replace("\\","\")
     if(!(Test-Path $LogPfad)){
-        New-Item -Path $LogPfad -ItemType Directory
+        mkdir $LogPfad
     }
     if(!(Test-Path $LogDatei)){
-        New-Item -Path $LogDatei -ItemType File
+        New-Item $LogDatei
     }
 
-    #Variablen, welche sich ändern pro Schleifendurchlauf
+    # Variablen, welche sich ändern pro Schleifendurchlauf
     foreach($Hostname in $HostArray){
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
             $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ep bypass -noprofile -file ... -Parameter Wert ..." 
             $TaskName = ($Hostname+" - "+$Jobname+" - "+$Initiator.Replace("\","_")) #Das "\" muss ersetzt werden, da der String sonst als Pfad erkannt wird und ungewollte Ordner erstellt werden in der Aufgabenplanung
 
-            #Check, ob Task Name bereits vergeben ist und ob der überschrieben werden darf
+            # Check, ob Task Name bereits vergeben ist und ob der überschrieben werden darf
             if(Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue){
                 if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
                 Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
@@ -191,12 +205,12 @@ function Zuweisung_einplanen{
                 $TaskForce = $true
             }
 
-            #Task anlegen
+            # Task anlegen
             if(($HostID.Count) -eq 1 -and ($JobID.Count) -eq 1){
                 Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath "Barajob-Scheduler" -TaskName $TaskName -Principal $Principal -ErrorAction SilentlyContinue
             }
 
-            #Log-Infos abfragen
+            # Log-Infos abfragen
             $Log = @{
                 "Erstellt am:" = $(Get-Date).ToString()
                 "Hostname:" = $Hostname 
@@ -206,7 +220,7 @@ function Zuweisung_einplanen{
                 "Initiator:" = $Initiator
             }
 
-            #Check ob Task wirklich erstellt wurde
+            # Check ob Task wirklich erstellt wurde
             $Check = Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue
             if(($Check) -and ($TaskForce -eq $true)){
                 [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
@@ -222,7 +236,7 @@ function Zuweisung_einplanen{
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
             }
 
-            #Log schreiben und relevante Variablen nullen
+            # Log schreiben und relevante Variablen nullen
             Write-Output $Log >> $LogDatei
             $HostID = ""
             $Aktion = ""
