@@ -3,10 +3,11 @@ param(
     [string]$JobID = "",
     [string]$HostID = @(""),
     [datetime]$StartZeitpunkt = (Get-Date),
-    [switch]$JobNeustart,
+    [switch]$NoJobNeustart = $false,
     [switch]$S = $false,
     [switch]$Silent = $false,
-    [switch]$Darkmode = $false
+    [switch]$Darkmode = $false,
+    [switch]$NoTaskForce = $false
 )
 ###############################################################
 ##### Diese Variablen können nach Bedarf angepasst werden #####
@@ -26,14 +27,16 @@ $RemoteFQDN = $null #$null oder leer = localhost
 # Name vom Pfad/Ordner in der Aufgabenplanung des Remote-Servers
 $TaskPath = "\JobScheduler\"
 
+#Dateipfad für das persönliche / temporäre Logfile
+$PersLogFile = "C:\Temp\" + $(Get-Date -Format "yyyyMMdd") + "_fehlgeschlagene_Clients.log"
+
 ###############################################################
 ################### Ab hier nix mehr ändern ###################
 ###############################################################
 #Endregion Variablen
 
 #Region Funktionen
-function Datei_auswählen()
-{
+function Datei_auswählen() {
     $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $OpenFileDialog.InitialDirectory = "shell:MyComputerFolder"
     $OpenFileDialog.Filter = "Textdateien (*.txt)| *.txt|Logs (*.log)| *.log|Alle Dateien (*.*)|*.*"
@@ -42,7 +45,7 @@ function Datei_auswählen()
     }
 }
 
-function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box){
+function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box) {
     $DateiInhalt = Get-Content -LiteralPath "$(Datei_auswählen)"
     foreach($Zeile in $Dateiinhalt){
         if(!([string]::IsNullOrEmpty($Zeile))){
@@ -185,7 +188,7 @@ $Rueckinfo = New-Object System.Windows.Forms.ComboBox
 $Rueckinfo.Location = "100, 280"
 $Rueckinfo.Width = "155"
 $Rueckinfo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-@("Immer","Nur bei Fehler","Nur am Ende","Nie (/Silent)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
+@("Immer","Bei Fehlern","Nur am Ende","Nie(/Silent,/S)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
 $Rueckinfo.SelectedIndex = 0
 $mainForm.Controls.Add($Rueckinfo)
 
@@ -250,8 +253,9 @@ function Zuweisung_einplanen {
     $Zeitpunkt = Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0
     $Trigger = New-ScheduledTaskTrigger -Once -At $Zeitpunkt
     $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-    $Initiator = $(whoami).split("\")[1]
-    $ErrorHosts = @("Hostnames")
+    $Initiator = whoami
+    $Counter = 0
+    $ErrorHosts = @()
 
     # CimSession aufbauen
     if([string]::IsNullOrEmpty($RemoteFQDN)){
@@ -280,18 +284,19 @@ function Zuweisung_einplanen {
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
             $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-windowstyle hidden -ep bypass -noprofile -file 'PFAD_ZU_SKRIPT' -Parameter1 'Wert1' -Switch" 
-            $TaskName = ($Hostname+" - "+$Jobname+" - "+$Initiator.Replace("\","_")) #Das "\" muss ersetzt werden, da der String sonst als Pfad erkannt wird und ungewollte Ordner erstellt werden in der Aufgabenplanung
+            $TaskName = ($Initiator.+" - "+$Hostname+" - "+$Jobname) #Das "\" muss ersetzt werden, da der String sonst als Pfad erkannt wird und ungewollte Ordner erstellt werden in der Aufgabenplanung
 
             # Check, ob Task Name bereits vergeben ist und ob der überschrieben werden darf
             if(Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue){
-                if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
-                Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
-                $TaskForce = $true
+                if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Bei Fehlern"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
+                    Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
+                    }else{
+                        $NoTaskForce = $true
+                    }
                 }else{
-                    $TaskForce = $false
+                    Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
                 }
-            }else{
-                $TaskForce = $true
             }
 
             # Task anlegen
@@ -311,13 +316,12 @@ function Zuweisung_einplanen {
 
             # Check ob Task wirklich erstellt wurde und Rückinfo generieren
             $Check = Get-ScheduledTask -CimSession $CimSession -TaskPath $TaskPath -TaskName $TaskName -ErrorAction SilentlyContinue
-            if(($Check) -and ($TaskForce -eq $true)){
+            if(($Check) -and ($NoTaskForce -eq $false)){
                 $Log += @{"Task erstellt" = "Erfolgreich"}
                 if($Rueckinfo.Text -eq "Immer"){
                     [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
                 }
-            }
-            elseif(($Check) -and ($TaskForce -eq $false)){
+            }elseif(($Check) -and ($NoTaskForce -eq $true)){
                 $Log += @{"Task erstellt" =  "Bereits vorhanden und sollte nicht überschrieben werden"}
                 if($Rueckinfo.Text -eq "Immer"){
                     [System.Windows.Forms.MessageBox]::Show("Der Task wurde auf Ihren Wunsch nicht überschrieben.","Alles beim Alten!",0)
@@ -327,9 +331,9 @@ function Zuweisung_einplanen {
                 $ErrorLog = $Log
                 $ErrorCount += 1
                 $ErrorHosts += @($Hostname)
-                if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Nur bei Fehler"){
-                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`nBitte Eingaben prüfen und erneut versuchen.`r`nSoll das aktuelle Log angezeigt werden?","Fehler!",4)) -eq "Yes"){
-                        $Log | Out-GridView -Title "Fehlgeschlagene Hostnames"
+                if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Bei Fehlern"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt","Fehler!",4)) -eq "Yes"){
+                        $Log | Out-GridView -Title "Fehlgeschlagener Hostname"
                     }
                 }
             }
@@ -345,14 +349,19 @@ function Zuweisung_einplanen {
             $Check.Clear()
             $Log.Clear()
             $ErrorLog.Clear()
+            $NoTaskForce = $false            
         }
     }
-    #'Rückinfo-Auswahl = "Nur am Ende"'-Fenster
-    if($Rueckinfo.Text -eq "Nur am Ende"){
+    #"Am Ende"'-Fenster
+    if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Bei Fehlern"){
         if($ErrorCount -gt 0){
-            if(([System.Windows.Forms.MessageBox]::Show("Es sind $ErrorCount Fehler aufgetreten!`r`nSollen die Fehler-Logs geöffnet werden?","$ErrorCount Fehler sind aufgetreten",4)) -eq "Yes"){
-                $ErrorHosts | Out-GridView
+            if(([System.Windows.Forms.MessageBox]::Show("Es sind $ErrorCount Fehler aufgetreten!`r`n$Counter Ausführungen waren erfolgreich.`r`n`r`nSollen die fehlgeschlagenen Clients aufgelistet werden?","$ErrorCount Fehler sind aufgetreten",4)) -eq "Yes"){
+                if(([System.Windows.Forms.MessageBox]::Show("$($ErrorHosts.split(' '))`r`n`r`nSollen diese in $PersLogFile geschrieben werden?","Fehlgeschlagene Hostnamen",4)) -eq "Yes"){
+                    $($ErrorHosts.split(' ')) >> $PersLogFile
+                }
             }
+        }else{
+            [System.Windows.Forms.MessageBox]::Show("Es sind alle $Counter Tasks erfolgreich angelegt worden","Tasks wurden erstellt",0)
         }
     }
     #Eingegebene Werte nach Zuweisungen nullen
@@ -361,6 +370,7 @@ function Zuweisung_einplanen {
     $Datum.ResetText()
     $Uhrzeit.ResetText()
     $ErrorCount.Clear()
+
 }
 #Endregion Zuweisung einplanen
 
