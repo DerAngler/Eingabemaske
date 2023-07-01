@@ -1,22 +1,30 @@
 ﻿#Region Variablen und Parameter
 param(
-    [string]$JobID = "",
-    [string]$HostID = @(""),
-    [datetime]$StartZeitpunkt = (Get-Date),
+    [string]$Job = "",
+    [string]$Hosts = @(""),
+    [string]$Wann = "",
     [switch]$NoJobNeustart = $false,
     [switch]$S = $false,
     [switch]$Silent = $false,
     [switch]$Darkmode = $false,
-    [switch]$NoTaskForce = $false
+    [switch]$NoTaskForce = $false,
+    [string]$LogPfad = "",
+    [string]$LogName = "",
+    [string]$ErrorLogPfad = "",
+    [string]$ErrorLogName = "",
+    [string]$RemoteFQDN = $null,
+    [string]$TaskPath = "",
+    [string]$PersLogFile = ""
 )
 ###############################################################
 ##### Diese Variablen können nach Bedarf angepasst werden #####
 ###############################################################
 
 # Log definieren
-$LogPfad = "C:\Logs\Github\Eingabemaske\"
-$LogName = $(Get-Date -Format "yyyyMMdd") + "_Eingabemaske.log"
-$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_Error_Eingabemaske.log"
+$LogPfad = "C:\Logs\Github\Scheduler\"
+$LogName = $(Get-Date -Format "yyyyMMdd") + "Scheduler.log"
+$ErrorLogPfad = $LogPfad
+$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "Scheduler.log"
 
 # Error Meldungen in powershell.exe verstecken
 $ErrorActionPreference = "SilentlyContinue"
@@ -74,7 +82,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # Main Form
 $mainForm = New-Object System.Windows.Forms.Form
 $Font = New-Object System.Drawing.Font("Courier New", 12)
-$mainForm.Text = "Eingabemaske"
+$mainForm.Text = "Scheduler"
 $mainForm.Font = $Font
 $mainForm.Height = 420
 $mainForm.Width = 282
@@ -143,10 +151,10 @@ $mainForm.Controls.Add($RueckinfosLabel)
  #Region GUI-Elemente
 
 # Jobname Auswahlfeld
-$Job = New-Object System.Windows.Forms.Textbox
-$Job.Location = "100, 7"
-$Job.Width = "155"
-$mainForm.Controls.Add($Job)
+$JobFeld = New-Object System.Windows.Forms.Textbox
+$JobFeld.Location = "100, 7"
+$JobFeld.Width = "155"
+$mainForm.Controls.Add($JobFeld)
 
 # Hostnames Auswahlfeld
 $Hostnames = New-Object System.Windows.Forms.TextBox
@@ -188,8 +196,8 @@ $Rueckinfo = New-Object System.Windows.Forms.ComboBox
 $Rueckinfo.Location = "100, 280"
 $Rueckinfo.Width = "155"
 $Rueckinfo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-@("Immer","Bei Fehlern","Nur am Ende","Nie(/Silent,/S)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
-$Rueckinfo.SelectedIndex = 0
+@("Für jeden Host","Fehler + Gesamt","Nur am Ende","Nie(/Silent,/S)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
+$Rueckinfo.SelectedIndex = 2
 $mainForm.Controls.Add($Rueckinfo)
 
 # Zuweisen Button
@@ -210,7 +218,7 @@ $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
 $TasksButton.BackColor = "White"
 $TasksButton.ForeColor = "Black"
-$TasksButton.add_Click({Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title JobScheduler -PassThru | Unregister-ScheduledTask -Confirm:$false})
+$TasksButton.add_Click({Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "JobScheduler - Markierte Tasks werden mit 'OK' gelöscht!!!" -PassThru | Unregister-ScheduledTask -Confirm:$false})
 $mainForm.Controls.Add($TasksButton)
 
 # Logs-Button
@@ -246,15 +254,18 @@ function Zuweisung_einplanen {
         exit
     }
 
-    # Variablen, welche immer gleich bleiben in der Schleife
+    # Variablen, welche Für jeden Host gleich bleiben in der Schleife
     $HostArray = $($Hostnames.Text) -split "`r`n"
-    $Jobname = $($Job.Text)
+    $Jobname = $($JobFeld.Text)
     $Neustart = $($Neustart.Checked)
+    $Zeitpunkt = [datetime]::ParseExact($Wann,'ddMMyyyy_HHmmss',$null)
     $Zeitpunkt = Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0
     $Trigger = New-ScheduledTaskTrigger -Once -At $Zeitpunkt
     $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
     $Initiator = whoami
+    $InitiatorShort = $Initiator.split("\")[1]
     $Counter = 0
+    $ErrorCounter = 0
     $ErrorHosts = @()
 
     # CimSession aufbauen
@@ -266,7 +277,7 @@ function Zuweisung_einplanen {
 
     # Log-Dateien erstellen und wenns Not tut auch Pfad
     $LogDatei = ($LogPfad+"\"+$LogName).Replace("\\","\")
-    $ErrorLogDatei = ($LogPfad+"\"+$ErrorLogName).Replace("\\","\")
+    $ErrorLogDatei = ($ErrorLogPfad+"\"+$ErrorLogName).Replace("\\","\")
     if(!(Test-Path $LogPfad)){
         mkdir $LogPfad
     }
@@ -284,11 +295,11 @@ function Zuweisung_einplanen {
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
             $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-windowstyle hidden -ep bypass -noprofile -file 'PFAD_ZU_SKRIPT' -Parameter1 'Wert1' -Switch" 
-            $TaskName = ($Initiator.+" - "+$Hostname+" - "+$Jobname) #Das "\" muss ersetzt werden, da der String sonst als Pfad erkannt wird und ungewollte Ordner erstellt werden in der Aufgabenplanung
+            $TaskName = ($InitiatorShort+" - "+$Hostname+" - "+$Jobname)
 
             # Check, ob Task Name bereits vergeben ist und ob der überschrieben werden darf
             if(Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue){
-                if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Bei Fehlern"){
+                if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
                     if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
                     Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
                     }else{
@@ -300,7 +311,7 @@ function Zuweisung_einplanen {
             }
 
             # Task anlegen
-            if(($HostID.Count) -eq 1 -and ($JobID.Count) -eq 1){
+            if(($Hostname.Count) -eq 1 -and ($Jobname.Count) -eq 1){
                 Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath $Taskpath -TaskName $TaskName -Principal $Principal #-ErrorAction SilentlyContinue
             }
 
@@ -318,20 +329,21 @@ function Zuweisung_einplanen {
             $Check = Get-ScheduledTask -CimSession $CimSession -TaskPath $TaskPath -TaskName $TaskName -ErrorAction SilentlyContinue
             if(($Check) -and ($NoTaskForce -eq $false)){
                 $Log += @{"Task erstellt" = "Erfolgreich"}
-                if($Rueckinfo.Text -eq "Immer"){
+                $Counter++
+                if($Rueckinfo.Text -eq "Für jeden Host"){
                     [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
                 }
             }elseif(($Check) -and ($NoTaskForce -eq $true)){
                 $Log += @{"Task erstellt" =  "Bereits vorhanden und sollte nicht überschrieben werden"}
-                if($Rueckinfo.Text -eq "Immer"){
+                if($Rueckinfo.Text -eq "Für jeden Host"){
                     [System.Windows.Forms.MessageBox]::Show("Der Task wurde auf Ihren Wunsch nicht überschrieben.","Alles beim Alten!",0)
                 }
             }else{
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
                 $ErrorLog = $Log
-                $ErrorCount += 1
+                $ErrorCounter++
                 $ErrorHosts += @($Hostname)
-                if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Bei Fehlern"){
+                if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
                     if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt","Fehler!",4)) -eq "Yes"){
                         $Log | Out-GridView -Title "Fehlgeschlagener Hostname"
                     }
@@ -353,26 +365,31 @@ function Zuweisung_einplanen {
         }
     }
     #"Am Ende"'-Fenster
-    if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Bei Fehlern"){
-        if($ErrorCount -gt 0){
-            if(([System.Windows.Forms.MessageBox]::Show("Es sind $ErrorCount Fehler aufgetreten!`r`n$Counter Ausführungen waren erfolgreich.`r`n`r`nSollen die fehlgeschlagenen Clients aufgelistet werden?","$ErrorCount Fehler sind aufgetreten",4)) -eq "Yes"){
+    if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
+        if($ErrorCounter -gt 0){
+            if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Fehler aufgetreten!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`nSollen die fehlgeschlagenen Clients aufgelistet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
                 if(([System.Windows.Forms.MessageBox]::Show("$($ErrorHosts.split(' '))`r`n`r`nSollen diese in $PersLogFile geschrieben werden?","Fehlgeschlagene Hostnamen",4)) -eq "Yes"){
                     $($ErrorHosts.split(' ')) >> $PersLogFile
                 }
             }
         }else{
-            [System.Windows.Forms.MessageBox]::Show("Es sind alle $Counter Tasks erfolgreich angelegt worden","Tasks wurden erstellt",0)
+            [System.Windows.Forms.MessageBox]::Show("Alle ($Counter) Tasks wurden erfolgreich angelegt","$Counter Task(s) erstellt",0)
         }
     }
     #Eingegebene Werte nach Zuweisungen nullen
     $Hostnames.Clear()
-    $Job.Clear()
+    $JobFeld.Clear()
     $Datum.ResetText()
     $Uhrzeit.ResetText()
-    $ErrorCount.Clear()
+    $ErrorCounter.Clear()
 
 }
 #Endregion Zuweisung einplanen
 
-# GUI starten
-[void]$mainForm.ShowDialog()
+#Region Ausführung starte
+
+if($Silent -OR $S){
+    Zuweisung_einplanen
+}else{
+    [void]$mainForm.ShowDialog()
+}
