@@ -1,31 +1,31 @@
-﻿param($Darkmode)
+﻿#Region Variablen
+param($Darkmode) 
+###############################################################
 ##### Diese Variablen können nach Bedarf angepasst werden #####
+###############################################################
 
 #Log definieren
 $LogPfad = "C:\Logs\Github\Eingabemaske\"
 $LogName = $(Get-Date -Format "yyyyMMdd") + "_Eingabemaske.log"
 $ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_Error_Eingabemaske.log"
 
+#Error Meldungen in powershell.exe verstecken
+$ErrorActionPreference = "SilentlyContinue"
+
 #Cim-Session Endpoint (Bei Planlosigkeit einfach so lassen)
 $RemoteFQDN = $null #$null oder leer = localhost 
 
+###############################################################
 ################### Ab hier nix mehr ändern ###################
-function Darkmode {
-    param (
-        $WasDM
-    )
-    if(!([string]::IsNullOrEmpty($Darkmode))){
-        $WasDM.ForeColor = "LightGray"
-        $WasDM.BackColor = "Black"
-    }
-}
+###############################################################
+#Endregion Variablen
 
+#Region Funktionen
 function Datei_auswählen()
 {
     $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $OpenFileDialog.InitialDirectory = "shell:MyComputerFolder"
     $OpenFileDialog.Filter = "Textdateien (*.txt)| *.txt|Logs (*.log)| *.log|Alle Dateien (*.*)|*.*"
-
     if($OpenFileDialog.ShowDialog() -eq "OK"){
         return $OpenFileDialog.FileName
     }
@@ -40,7 +40,20 @@ function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box){
     }
 }
 
-#Region Eingabemaske
+function Darkmode {
+    param (
+        $DasWasDunkelGemachtWerdenSoll
+    )
+    if(!([string]::IsNullOrEmpty($Darkmode))){
+        $DasWasDunkelGemachtWerdenSoll.ForeColor = "LightGray"
+        $DasWasDunkelGemachtWerdenSoll.BackColor = "Black"
+    }
+}
+#Endregion Funktionen
+
+#Region GUI
+
+ #Region GUI-Label
 Add-Type -AssemblyName System.Windows.Forms
 [System.Windows.Forms.Application]::EnableVisualStyles() #Wenn der Kalender Button nicht geht, dann diese Zeile auskommentieren und neue PS Session starten
 
@@ -102,6 +115,19 @@ $NeustartLabel.Width = 230
 Darkmode($NeustartLabel)
 $mainForm.Controls.Add($NeustartLabel)
 
+# Rückinfos Label
+$RueckinfosLabel = New-Object System.Windows.Forms.Label
+$RueckinfosLabel.Text = "Rückinfo?"
+$RueckinfosLabel.Location = "5, 282"
+$RueckinfosLabel.Height = 22
+$RueckinfosLabel.Width = 95
+Darkmode($RueckinfosLabel)
+$mainForm.Controls.Add($RueckinfosLabel)
+
+ #Endregion GUI-Label
+
+ #Region GUI-Elemente
+
 # Jobname Auswahlfeld
 $Job = New-Object System.Windows.Forms.Textbox
 $Job.Location = "100, 7"
@@ -160,7 +186,7 @@ $Zuweisen.Location = "5, 313"#282
 $Zuweisen.Height = "32"
 $Zuweisen.Width = "252"
 $Zuweisen.Text = "Zuweisung einplanen"
-Darkmode($Zuweisen)
+# Darkmode($Zuweisen)
 $Zuweisen.add_Click({Zuweisung_einplanen})
 $mainForm.Controls.Add($Zuweisen)
 
@@ -169,7 +195,7 @@ $TasksButton = New-Object System.Windows.Forms.Button
 $TasksButton.Location = "5, 350"
 $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
-Darkmode($TasksButton)
+# Darkmode($TasksButton)
 $TasksButton.add_Click({Get-ScheduledTask -TaskPath "\Microsoft\Office\" | Get-ScheduledTaskInfo | Out-GridView -Title Bara-Job-Scheduler})
 $mainForm.Controls.Add($TasksButton)
 
@@ -178,21 +204,25 @@ $LogsButton = New-Object System.Windows.Forms.Button
 $LogsButton.Location = "133, 350"
 $LogsButton.Width = "124"
 $LogsButton.Text = "Logs"
-Darkmode($LogsButton)
+# Darkmode($LogsButton)
 $LogsButton.add_Click({(explorer.exe $LogPfad)})
 $mainForm.Controls.Add($LogsButton)
 
 # Return-DDM
-$ReturnDDM = New-Object System.Windows.Forms.ComboBox
-$ReturnDDM.Location = "100, 280"#310
-$ReturnDDM.Width = "155"
-@("Immer","Nur bei Fehler","Nur am Ende","Nie (/Silent)") | ForEach-Object {[void] $ReturnDDM.Items.Add($_)}
+$Rueckinfo = New-Object System.Windows.Forms.ComboBox
+$Rueckinfo.Location = "100, 280"
+$Rueckinfo.Width = "155"
+@("Immer","Nur bei Fehler","Nur am Ende","Nie (/Silent)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
 # Select the default value
-$ReturnDDM.SelectedIndex = 0
-Darkmode($ReturnDDM)
-$mainForm.Controls.Add($ReturnDDM)
-#Endregion Eingabemaske
+$Rueckinfo.SelectedIndex = 0
+# Darkmode($Rueckinfo)
+$mainForm.Controls.Add($Rueckinfo)
 
+ #Endregion GUI-Elemente
+
+#Endregion GUI
+
+#Region Zuweisung einplanen
 function Zuweisung_einplanen {
     # Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt wurde
     if(($mainForm.ActiveControl.Text -ne "Zuweisung einplanen")){
@@ -259,36 +289,49 @@ function Zuweisung_einplanen {
                 "Initiator:" = $Initiator
             }
 
-            # Check ob Task wirklich erstellt wurde
+            # Check ob Task wirklich erstellt wurde und Rückinfo generieren
             $Check = ""#Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue
             if(($Check) -and ($TaskForce -eq $true)){
-                # [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
                 $Log += @{"Task erstellt" = "Erfolgreich"}
+                if($Rueckinfo.Text -eq "Immer"){
+                    [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
+                }
             }
             elseif(($Check) -and ($TaskForce -eq $false)){
-                [System.Windows.Forms.MessageBox]::Show("Der Task wurde auf Ihren Wunsch nicht überschrieben.","Alles beim Alten!",0)
                 $Log += @{"Task erstellt" =  "Bereits vorhanden und sollte nicht überschrieben werden"}
-            }else{
-                if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`nBitte Eingaben prüfen und erneut versuchen.`r`nSoll das aktuelle Log angezeigt werden?","Fehler!",4)) -eq "Yes"){
-                    $Log | Out-GridView
+                if($Rueckinfo.Text -eq "Immer"){
+                    [System.Windows.Forms.MessageBox]::Show("Der Task wurde auf Ihren Wunsch nicht überschrieben.","Alles beim Alten!",0)
                 }
+            }else{
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
-
                 $ErrorLog = $Log
+                if($Rueckinfo.Text -eq "Immer" -OR "Nur bei Fehler"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`nBitte Eingaben prüfen und erneut versuchen.`r`nSoll das aktuelle Log angezeigt werden?","Fehler!",4)) -eq "Yes"){
+                        $Log | Out-GridView
+                    }
+                }
             }
 
-            # Log schreiben und relevante Variablen nullen
+            # Log schreiben
             Write-Output $Log >> $LogDatei
             Write-Output $ErrorLog >> $ErrorLogDatei
-            $HostID = ""
-            $Aktion = ""
-            $TaskName = ""
-            $Check = ""
-            $Log = ""
-            $ErrorLog = ""
+
+            #Relevante Variablen nullen in jedem Schleifen durchlaufen
+            $HostID.Clear()
+            $Aktion.Clear()
+            $TaskName.Clear()
+            $Check.Clear()
+            $Log.Clear()
+            $ErrorLog.Clear()
         }
     }
+    #Eingegebene Werte nach Zuweisungen nullen
+    $Hostnames.Clear()
+    $Job.Clear()
+    $Datum.ResetText()
+    $Uhrzeit.ResetText()
 }
+#Endregion Zuweisung einplanen
 
-# Eingabemaske darstellen
+# GUI starten
 [void]$mainForm.ShowDialog()
