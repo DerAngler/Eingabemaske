@@ -4,7 +4,6 @@
 #Log definieren
 $LogPfad = "C:\Logs\Github\Eingabemaske\"
 $LogName = $(Get-Date -Format "yyyyMMdd") + "_Eingabemaske.log"
-$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_Error_Eingabemaske.log"
 
 #Cim-Session Endpoint (Bei Planlosigkeit einfach so lassen)
 $RemoteFQDN = $null #$null oder leer = localhost 
@@ -34,9 +33,7 @@ function Datei_auswählen()
 function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box){
     $DateiInhalt = Get-Content -LiteralPath "$(Datei_auswählen)"
     foreach($Zeile in $Dateiinhalt){
-        if(!([string]::IsNullOrEmpty($Zeile))){
-            $Hostnames.Text += "$($Zeile.Trim())`r`n"
-        }
+        $Hostnames.Text += "$($Zeile.Trim())`r`n"
     }
 }
 
@@ -49,7 +46,7 @@ $mainForm = New-Object System.Windows.Forms.Form
 $Font = New-Object System.Drawing.Font("Courier New", 12)
 $mainForm.Text = "Eingabemaske"
 $mainForm.Font = $Font
-$mainForm.Height = 420
+$mainForm.Height = 382
 $mainForm.Width = 282
 $mainForm.MaximizeBox = $false
 $mainForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Fixed3D
@@ -156,8 +153,8 @@ $mainForm.Controls.Add($Neustart)
 
 # Zuweisen Button
 $Zuweisen = New-Object System.Windows.Forms.Button
-$Zuweisen.Location = "5, 313"#282
-$Zuweisen.Height = "32"
+$Zuweisen.Location = "5, 282"
+$Zuweisen.Height = "25"
 $Zuweisen.Width = "252"
 $Zuweisen.Text = "Zuweisung einplanen"
 Darkmode($Zuweisen)
@@ -166,7 +163,7 @@ $mainForm.Controls.Add($Zuweisen)
 
 # Task-Button
 $TasksButton = New-Object System.Windows.Forms.Button
-$TasksButton.Location = "5, 350"
+$TasksButton.Location = "5, 310"
 $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
 Darkmode($TasksButton)
@@ -175,22 +172,12 @@ $mainForm.Controls.Add($TasksButton)
 
 # Logs-Button
 $LogsButton = New-Object System.Windows.Forms.Button
-$LogsButton.Location = "133, 350"
+$LogsButton.Location = "133, 310"
 $LogsButton.Width = "124"
 $LogsButton.Text = "Logs"
 Darkmode($LogsButton)
 $LogsButton.add_Click({(explorer.exe $LogPfad)})
 $mainForm.Controls.Add($LogsButton)
-
-# Return-DDM
-$ReturnDDM = New-Object System.Windows.Forms.ComboBox
-$ReturnDDM.Location = "100, 280"#310
-$ReturnDDM.Width = "155"
-@("Immer","Nur bei Fehler","Nur am Ende","Nie (/Silent)") | ForEach-Object {[void] $ReturnDDM.Items.Add($_)}
-# Select the default value
-$ReturnDDM.SelectedIndex = 0
-Darkmode($ReturnDDM)
-$mainForm.Controls.Add($ReturnDDM)
 #Endregion Eingabemaske
 
 function Zuweisung_einplanen {
@@ -215,9 +202,8 @@ function Zuweisung_einplanen {
         $CimSession = New-CimSession -ComputerName $RemoteFQDN -Credential Get-Credential
     }
 
-    # Log-Dateien erstellen und wenns Not tut auch Pfad
+    # Log-Datei erstellen und wenns Not tut auch Pfad
     $LogDatei = ($LogPfad+"\"+$LogName).Replace("\\","\")
-    $ErrorLogDatei = ($LogPfad+"\"+$ErrorLogName).Replace("\\","\")
     if(!(Test-Path $LogPfad)){
         mkdir $LogPfad
     }
@@ -249,7 +235,7 @@ function Zuweisung_einplanen {
                 Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath "Barajob-Scheduler" -TaskName $TaskName -Principal $Principal -ErrorAction SilentlyContinue
             }
 
-            # Log-Infos abfragen und in Log schreiben
+            # Log-Infos abfragen
             $Log = @{
                 "Erstellt am:" = $(Get-Date).ToString()
                 "Hostname:" = $Hostname 
@@ -260,9 +246,9 @@ function Zuweisung_einplanen {
             }
 
             # Check ob Task wirklich erstellt wurde
-            $Check = ""#Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue
+            $Check = Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue
             if(($Check) -and ($TaskForce -eq $true)){
-                # [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
+                [System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' wurde erfolgreich erstellt und wird am $($Zeitpunkt.DateTime) ausgeführt.","Erfolg!",0)
                 $Log += @{"Task erstellt" = "Erfolgreich"}
             }
             elseif(($Check) -and ($TaskForce -eq $false)){
@@ -273,21 +259,18 @@ function Zuweisung_einplanen {
                     $Log | Out-GridView
                 }
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
-
-                $ErrorLog = $Log
             }
 
             # Log schreiben und relevante Variablen nullen
             Write-Output $Log >> $LogDatei
-            Write-Output $ErrorLog >> $ErrorLogDatei
             $HostID = ""
             $Aktion = ""
             $TaskName = ""
             $Check = ""
-            $Log = ""
-            $ErrorLog = ""
         }
     }
+    $Hostnames.Clear()
+    $Job.Clear()
 }
 
 # Eingabemaske darstellen

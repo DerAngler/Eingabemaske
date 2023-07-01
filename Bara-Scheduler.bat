@@ -1,0 +1,1 @@
+powershell.exe -windowstyle hidden -ep bypass -file "C:\Github\Repositorys\Powershell\Eingabemaske.ps1" -Darkmode test
