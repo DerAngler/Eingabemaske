@@ -1,19 +1,30 @@
-﻿#Region Variablen
-param($Darkmode) 
+﻿#Region Variablen und Parameter
+param(
+    [string]$JobID = "",
+    [string]$HostID = @(""),
+    [datetime]$StartZeitpunkt = (Get-Date),
+    [switch]$JobNeustart,
+    [switch]$S = $false,
+    [switch]$Silent = $false,
+    [switch]$Darkmode = $false
+)
 ###############################################################
 ##### Diese Variablen können nach Bedarf angepasst werden #####
 ###############################################################
 
-#Log definieren
+# Log definieren
 $LogPfad = "C:\Logs\Github\Eingabemaske\"
 $LogName = $(Get-Date -Format "yyyyMMdd") + "_Eingabemaske.log"
 $ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_Error_Eingabemaske.log"
 
-#Error Meldungen in powershell.exe verstecken
+# Error Meldungen in powershell.exe verstecken
 $ErrorActionPreference = "SilentlyContinue"
 
-#Cim-Session Endpoint (Bei Planlosigkeit einfach so lassen)
+# Cim-Session Endpoint (Bei Planlosigkeit einfach so lassen)
 $RemoteFQDN = $null #$null oder leer = localhost 
+
+# Name vom Pfad/Ordner in der Aufgabenplanung des Remote-Servers
+$TaskPath = "\JobScheduler\"
 
 ###############################################################
 ################### Ab hier nix mehr ändern ###################
@@ -44,7 +55,7 @@ function Darkmode {
     param (
         $DasWasDunkelGemachtWerdenSoll
     )
-    if(!([string]::IsNullOrEmpty($Darkmode))){
+    if($Darkmode -eq $true){
         $DasWasDunkelGemachtWerdenSoll.ForeColor = "LightGray"
         $DasWasDunkelGemachtWerdenSoll.BackColor = "Black"
     }
@@ -196,7 +207,7 @@ $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
 $TasksButton.BackColor = "White"
 $TasksButton.ForeColor = "Black"
-$TasksButton.add_Click({Get-ScheduledTask -TaskPath "\Microsoft\Office\" | Get-ScheduledTaskInfo | Out-GridView -Title Bara-Job-Scheduler})
+$TasksButton.add_Click({Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title JobScheduler -PassThru | Unregister-ScheduledTask -Confirm:$false})
 $mainForm.Controls.Add($TasksButton)
 
 # Logs-Button
@@ -211,7 +222,7 @@ $mainForm.Controls.Add($LogsButton)
 
 # Import Hostnames from File - Button
 $ImportHosts = New-Object System.Windows.Forms.Button
-$ImportHosts.Location = "18, 70"
+$ImportHosts.Location = "17, 70"
 $ImportHosts.Height = "20"
 $ImportHosts.Width = "65"
 $ImportHosts.Font = ("Courier New, 10")
@@ -238,8 +249,8 @@ function Zuweisung_einplanen {
     $Neustart = $($Neustart.Checked)
     $Zeitpunkt = Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0
     $Trigger = New-ScheduledTaskTrigger -Once -At $Zeitpunkt
-    $Principal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-    $Initiator = whoami
+    $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    $Initiator = $(whoami).split("\")[1]
     $ErrorHosts = @("Hostnames")
 
     # CimSession aufbauen
@@ -268,7 +279,7 @@ function Zuweisung_einplanen {
     foreach($Hostname in $HostArray){
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
-            $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ep bypass -noprofile -file ... -Parameter Wert ..." 
+            $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-windowstyle hidden -ep bypass -noprofile -file 'PFAD_ZU_SKRIPT' -Parameter1 'Wert1' -Switch" 
             $TaskName = ($Hostname+" - "+$Jobname+" - "+$Initiator.Replace("\","_")) #Das "\" muss ersetzt werden, da der String sonst als Pfad erkannt wird und ungewollte Ordner erstellt werden in der Aufgabenplanung
 
             # Check, ob Task Name bereits vergeben ist und ob der überschrieben werden darf
@@ -285,7 +296,7 @@ function Zuweisung_einplanen {
 
             # Task anlegen
             if(($HostID.Count) -eq 1 -and ($JobID.Count) -eq 1){
-                Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath "Barajob-Scheduler" -TaskName $TaskName -Principal $Principal -ErrorAction SilentlyContinue
+                Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath $Taskpath -TaskName $TaskName -Principal $Principal #-ErrorAction SilentlyContinue
             }
 
             # Log erstellen und bisher bekannte Infos reinschreiben
@@ -299,7 +310,7 @@ function Zuweisung_einplanen {
             }
 
             # Check ob Task wirklich erstellt wurde und Rückinfo generieren
-            $Check = ""#Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue
+            $Check = Get-ScheduledTask -CimSession $CimSession -TaskPath $TaskPath -TaskName $TaskName -ErrorAction SilentlyContinue
             if(($Check) -and ($TaskForce -eq $true)){
                 $Log += @{"Task erstellt" = "Erfolgreich"}
                 if($Rueckinfo.Text -eq "Immer"){
