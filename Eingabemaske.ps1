@@ -118,7 +118,7 @@ $mainForm.Controls.Add($NeustartLabel)
 # Rückinfos Label
 $RueckinfosLabel = New-Object System.Windows.Forms.Label
 $RueckinfosLabel.Text = "Rückinfo?"
-$RueckinfosLabel.Location = "5, 282"
+$RueckinfosLabel.Location = "5, 283"
 $RueckinfosLabel.Height = 22
 $RueckinfosLabel.Width = 95
 Darkmode($RueckinfosLabel)
@@ -145,17 +145,6 @@ $Hostnames.AcceptsReturn = $true
 $Hostnames.WordWrap = $true
 $mainForm.Controls.Add($Hostnames)
 
-# Import Hostnames from File
-$ImportHosts = New-Object System.Windows.Forms.Button
-$ImportHosts.Location = "18, 70"
-$ImportHosts.Height = "20"
-$ImportHosts.Width = "65"
-$ImportHosts.Font = ("Courier New, 10")
-$ImportHosts.Text = "Import"
-Darkmode($ImportHosts)
-$ImportHosts.add_Click({Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Hostnames)})
-$mainForm.Controls.Add($ImportHosts)
-
 # Datum Auswahlfeld
 $Datum = New-Object System.Windows.Forms.DateTimePicker
 $Datum.Location = "100, 177"
@@ -180,13 +169,23 @@ $Neustart.Location = "242, 248"
 $Neustart.Checked = $TRUE
 $mainForm.Controls.Add($Neustart)
 
+# Rückinfo-Dropdown Menü (ComboBox)
+$Rueckinfo = New-Object System.Windows.Forms.ComboBox
+$Rueckinfo.Location = "100, 280"
+$Rueckinfo.Width = "155"
+$Rueckinfo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+@("Immer","Nur bei Fehler","Nur am Ende","Nie (/Silent)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
+$Rueckinfo.SelectedIndex = 0
+$mainForm.Controls.Add($Rueckinfo)
+
 # Zuweisen Button
 $Zuweisen = New-Object System.Windows.Forms.Button
 $Zuweisen.Location = "5, 313"#282
 $Zuweisen.Height = "32"
 $Zuweisen.Width = "252"
 $Zuweisen.Text = "Zuweisung einplanen"
-# Darkmode($Zuweisen)
+$Zuweisen.BackColor = "White"
+$Zuweisen.ForeColor = "Black"
 $Zuweisen.add_Click({Zuweisung_einplanen})
 $mainForm.Controls.Add($Zuweisen)
 
@@ -195,7 +194,8 @@ $TasksButton = New-Object System.Windows.Forms.Button
 $TasksButton.Location = "5, 350"
 $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
-# Darkmode($TasksButton)
+$TasksButton.BackColor = "White"
+$TasksButton.ForeColor = "Black"
 $TasksButton.add_Click({Get-ScheduledTask -TaskPath "\Microsoft\Office\" | Get-ScheduledTaskInfo | Out-GridView -Title Bara-Job-Scheduler})
 $mainForm.Controls.Add($TasksButton)
 
@@ -204,19 +204,22 @@ $LogsButton = New-Object System.Windows.Forms.Button
 $LogsButton.Location = "133, 350"
 $LogsButton.Width = "124"
 $LogsButton.Text = "Logs"
-# Darkmode($LogsButton)
+$LogsButton.BackColor = "White"
+$LogsButton.ForeColor = "Black"
 $LogsButton.add_Click({(explorer.exe $LogPfad)})
 $mainForm.Controls.Add($LogsButton)
 
-# Return-DDM
-$Rueckinfo = New-Object System.Windows.Forms.ComboBox
-$Rueckinfo.Location = "100, 280"
-$Rueckinfo.Width = "155"
-@("Immer","Nur bei Fehler","Nur am Ende","Nie (/Silent)") | ForEach-Object {[void]$Rueckinfo.Items.Add($_)}
-# Select the default value
-$Rueckinfo.SelectedIndex = 0
-# Darkmode($Rueckinfo)
-$mainForm.Controls.Add($Rueckinfo)
+# Import Hostnames from File - Button
+$ImportHosts = New-Object System.Windows.Forms.Button
+$ImportHosts.Location = "18, 70"
+$ImportHosts.Height = "20"
+$ImportHosts.Width = "65"
+$ImportHosts.Font = ("Courier New, 10")
+$ImportHosts.Text = "Import"
+$ImportHosts.BackColor = "White"
+$ImportHosts.ForeColor = "Black"
+$ImportHosts.add_Click({Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Hostnames)})
+$mainForm.Controls.Add($ImportHosts)
 
  #Endregion GUI-Elemente
 
@@ -237,6 +240,7 @@ function Zuweisung_einplanen {
     $Trigger = New-ScheduledTaskTrigger -Once -At $Zeitpunkt
     $Principal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
     $Initiator = whoami
+    $ErrorHosts = @("Hostnames")
 
     # CimSession aufbauen
     if([string]::IsNullOrEmpty($RemoteFQDN)){
@@ -254,6 +258,11 @@ function Zuweisung_einplanen {
     if(!(Test-Path $LogDatei)){
         New-Item $LogDatei
     }
+    if(!(Test-Path $ErrorLogDatei)){
+        New-Item $ErrorLogDatei
+    }
+    Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $LogDatei
+    Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $ErrorLogDatei
 
     # Variablen, welche sich ändern pro Schleifendurchlauf
     foreach($Hostname in $HostArray){
@@ -279,7 +288,7 @@ function Zuweisung_einplanen {
                 Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath "Barajob-Scheduler" -TaskName $TaskName -Principal $Principal -ErrorAction SilentlyContinue
             }
 
-            # Log-Infos abfragen und in Log schreiben
+            # Log erstellen und bisher bekannte Infos reinschreiben
             $Log = @{
                 "Erstellt am:" = $(Get-Date).ToString()
                 "Hostname:" = $Hostname 
@@ -305,9 +314,11 @@ function Zuweisung_einplanen {
             }else{
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
                 $ErrorLog = $Log
-                if($Rueckinfo.Text -eq "Immer" -OR "Nur bei Fehler"){
+                $ErrorCount += 1
+                $ErrorHosts += @($Hostname)
+                if($Rueckinfo.Text -eq "Immer" -OR $Rueckinfo.Text -eq "Nur bei Fehler"){
                     if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`nBitte Eingaben prüfen und erneut versuchen.`r`nSoll das aktuelle Log angezeigt werden?","Fehler!",4)) -eq "Yes"){
-                        $Log | Out-GridView
+                        $Log | Out-GridView -Title "Fehlgeschlagene Hostnames"
                     }
                 }
             }
@@ -325,11 +336,20 @@ function Zuweisung_einplanen {
             $ErrorLog.Clear()
         }
     }
+    #'Rückinfo-Auswahl = "Nur am Ende"'-Fenster
+    if($Rueckinfo.Text -eq "Nur am Ende"){
+        if($ErrorCount -gt 0){
+            if(([System.Windows.Forms.MessageBox]::Show("Es sind $ErrorCount Fehler aufgetreten!`r`nSollen die Fehler-Logs geöffnet werden?","$ErrorCount Fehler sind aufgetreten",4)) -eq "Yes"){
+                $ErrorHosts | Out-GridView
+            }
+        }
+    }
     #Eingegebene Werte nach Zuweisungen nullen
     $Hostnames.Clear()
     $Job.Clear()
     $Datum.ResetText()
     $Uhrzeit.ResetText()
+    $ErrorCount.Clear()
 }
 #Endregion Zuweisung einplanen
 
