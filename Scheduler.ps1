@@ -13,6 +13,7 @@ param(
     [switch]$NoTaskForce = $false,
     [string]$LogPfad = "C:\Logs\Github\Scheduler\",
     [string]$LogName = $(Get-Date -Format "yyyyMMdd") + "_Scheduler.log",
+    [switch]$Admin = $false,
     [string]$ErrorLogPfad = $LogPfad,
     [string]$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_ERROR_Scheduler.log",
     [string]$RemoteFQDN = $null,
@@ -43,6 +44,18 @@ function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box) {
         if(!([string]::IsNullOrEmpty($Zeile))){
             $Hostnames.Text += "$($Zeile.Trim())`r`n"
         }
+    }
+}
+
+function Tasks_anzeigen {
+    if(Get-ScheduledTask -TaskPath $TaskPath){
+        if($Admin -ne $TRUE){
+            Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "Scheduler"
+        }else{
+            Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "Scheduler - Markierte Tasks werden mit 'OK' gelöscht!!!" -PassThru | Unregister-ScheduledTask -Confirm:$false
+        }
+    }else{
+        [System.Windows.Forms.MessageBox]::Show("Es konnten keine Tasks unter '$TaskPath' gefunden werden`r`n`r`nBitte das Skript mit einem anderen User oder als Admin ausführen`r`nWenn diese Meldung dennoch erscheint, gibt es wohl keine Tasks","Keine Tasks gefunden",0)
     }
 }
 
@@ -213,7 +226,7 @@ $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
 $TasksButton.BackColor = "White"
 $TasksButton.ForeColor = "Black"
-$TasksButton.add_Click({Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "JobScheduler - Markierte Tasks werden mit 'OK' gelöscht!!!" -PassThru | Unregister-ScheduledTask -Confirm:$false})
+$TasksButton.add_Click({Tasks_anzeigen})
 $mainForm.Controls.Add($TasksButton)
 
 # Logs-Button
@@ -409,7 +422,7 @@ function Zuweisung_einplanen {
                 $ErrorCounter++
                 $ErrorHosts += @($Hostname)
                 if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
-                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das Log des zugehörigen Task geöffnet werden?","Fehler!",4)) -eq "Yes"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das Log des zugehörigen Task geöffnet werden?","Fehler!",4)) -eq "Yes"){
                         $Log | Out-GridView -Title "Fehlgeschlagener Host"
                     }
                 }
@@ -432,7 +445,7 @@ function Zuweisung_einplanen {
     if($Silent -ne $true -AND $S -ne $true){
         if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
             if($ErrorCounter -gt 0){
-                if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Ausführung ist auf Fehler gelaufen!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das eben gemeinte Log direkt im Notepad geöffnet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
+                if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Ausführung ist auf Fehler gelaufen!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das eben gemeinte Log direkt im Notepad geöffnet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
                     notepad.exe $ErrorLogDatei
                 }
             }elseif($SkippedCounter -gt 0){
@@ -459,9 +472,9 @@ function Zuweisung_einplanen {
 #Endregion Zuweisung einplanen
 
 #Region Ausführung starten
-
 if($Silent -eq $true -or $S -eq $true){
     Zuweisung_einplanen
 }else{
     [void]$mainForm.ShowDialog()
 }
+#Endregion Ausführung starten
