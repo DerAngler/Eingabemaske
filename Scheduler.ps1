@@ -1,6 +1,6 @@
 ﻿#Region Variablen und Parameter
 ###############################################################
-##### Diese Variablen können nach Bedarf angepasst werden #####
+######## Diese Parameter-Werte können angepasst werden ########
 ###############################################################
 param(
     [string]$Job = "",
@@ -429,7 +429,7 @@ function Zuweisung_einplanen {
         }
     }
     #"Am Ende"-Fenster
-    if($Silent -ne $true){
+    if($Silent -ne $true -AND $S -ne $true){
         if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
             if($ErrorCounter -gt 0){
                 if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Ausführung ist auf Fehler gelaufen!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das eben gemeinte Log direkt im Notepad geöffnet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
@@ -460,7 +460,7 @@ function Zuweisung_einplanen {
 
 #Region Ausführung starten
 
-if($Silent -OR $S){
+if($Silent -eq $true -or $S -eq $true){
     Zuweisung_einplanen
 }else{
     [void]$mainForm.ShowDialog()

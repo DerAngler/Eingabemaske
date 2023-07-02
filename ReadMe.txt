@@ -1,41 +1,49 @@
-[Type]$Parameter = "Beispiel"
-----------------------------------
-[string]$Job = "Patchupdates"
-[string]$Hosts = "PC1 PC2 PC3"
-[string]$Wann = "26-12-1997 16:20" #"1997-12-26 16:20" geht auch
-[switch]$NoJobNeustart = $false,
-[switch]$S = $false,
-[switch]$Silent = $false,
-[switch]$Darkmode = $false,
-[switch]$NoTaskForce = $false,
-[string]$LogPfad = "C:\Logs\Github\Scheduler\"
-[string]$LogName = $(Get-Date -Format "yyyyMMdd") + "_Scheduler.log"
-[string]$LogPfad = "C:\Logs\Github\Scheduler\"
-[string]$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_Error_Scheduler.log"
-[string]$RemoteFQDN = $null
-[string]$TaskPath = "\JobScheduler\",
-[string]$TempLogFile = "C:\Temp\tmpLog_Scheduler.log"
-[switch]$Switch = $false
-[string]$Spalter = ","
+Powershell-Scheduler
 
-Erklärung der Parameter:
-$Job = Name des Jobs, Skripts, Programm, etc
-$Hosts = Array mit Hostnamen. Trennung durch Leerzeichen oder Zeilenumbruch
-$Wann = Zeitpunkt, an dem der Aufgabenplaner den Task triggert
-$NoJobNeustart = Ob der Job im Zielsystem neu gestartet werden darf (Kann nach belieben umfunktioniert / entfernt werden... auch aus GUI)
-$S = Kurzform vom $Silent
-$Silent = Ermöglicht eine Ausführung des Skripts im Hintergrund
-$Darkmode = Macht alles außer Eingabeelemente Schwarz mit grauen Text
-$NoTaskForce = Verhindert das Überschreibung von bereits vorhandenen Tasks, falls Jobname, Hostname und Initiator übereinstimmt
-$LogPfad = Pfad des Logs. Ein abschließendes "\" kann gesetzt werden, tut aber nicht Not
-$LogName = Name des Logs
-$ErrorLogPfad = Pfad des Error-Logs. Ein abschließendes "\" kann gesetzt werden, tut aber nicht Not
-$ErrorLogName = Name des Error-Logs
-$RemoteFQDN = Das ist der Verbindungsparameter für eine CIM-Session. Für eine localhost AUsführung bitte $null angeben
-$TaskPath = Pfad im Aufgabenplaner, in den die Tasks geschrieben werden und der "Tasks"-Button seine ausliest
-$TempLogFile = Dateipfad, in den bei einer non-Silent-Ausführung auf Wunsch eine Liste fehlgeschlagener Hosts exportiert werden
-$Switch = Tauscht Hosts und Jobs aus, sprich man weißt dann einem Host mehrere Jobs zu
-$Spalter = Das Trennzeichen, mit welchem die Hosts aus einer Zeile in eigene Werte gesplited werden
+Eine einzelnes Powershell-Skript, mit welchem Tasks im Aufgabenplaner eines Zielservers erstellt und verwaltet werden können.
 
-Beispiel Silent Taskanlage per Powershell oder CMD:
-powershell.exe -ep bypass -windowstyle hidden -noprofile -file "C:\...\Scheduler.ps1" -Job "TestJob" -Hosts "PC Name 1; PC Name 2; ..." -Spalter ";" -Wann "25-05-2025 04:20" -NoTaskForce -Silent
+Simple Nutzung per GUI möglich. Einfach das Skript im Ganzen kopieren und in einer Powershell ausführen / aufrufen
+(Je nach Zielsystem ggf. Ausführung mit entsprechenden Berechtigungen oder als Admin nötig)
+
+Für die Nutzung per Kommandozeile gibt es folgende Parameter:
+
+[string]$Job = "Jobname" Name vom Job, Skript, Programm, etc
+[array]$Hosts = "PC1, PC2, PC3" Array mit Hostnamen. Trennung standardmäßig mit Komma(,)
+[string]$Spalter = "," Das Trennzeichen, mit welchem die Hosts aus einer Zeile in eigene Werte gesplited werden
+[datime]$Wann = "26-12-1997 23:07" oder "19971226_2307" oder ... Zeitpunkt, an dem der Aufgabenplaner den Task triggert
+[switch]$NoJobNeustart = Ob der Job im Zielsystem neu gestartet werden darf (Parameter, der in der Aktion des Tasks mitgegeben wird)
+[switch]$Silent = Skript wird ohne GUI ausgeführt, für Ausführungen aus anderen Skripten heraus
+[switch]$S = Kurzform von $Silent
+[switch]$Darkmode = Macht alles außer Eingabeelemente Schwarz mit grauen Text
+[switch]$NoTaskForce = Verhindert das Überschreibung von bereits vorhandenen Tasks, falls Jobname, Hostname und Initiator übereinstimmt
+[string]$LogPfad = Pfad des Logs. Ein abschließendes "\" kann gesetzt werden, tut aber nicht Not
+[string]$LogName = Name des Logs
+[string]$ErrorLogPfad = Pfad des Error-Logs. Ein abschließendes "\" kann gesetzt werden, tut aber nicht Not
+[string]$ErrorLogName = Name des Error-Logs
+[string]$RemoteFQDN = Host, auf dem die Tasks angelegt werden sollen. Für eine localhost Ausführung bitte $null angeben
+[string]$TaskPath = Pfad im Aufgabenplaner, in dem die Tasks geschrieben werden und der "Tasks"-Button seine ausliest
+[string]$TempLogFile = Dateipfad, in den bei einer Nicht-Silent-Ausführung auf Wunsch eine Liste fehlgeschlagener Hosts exportiert werden
+[switch]$Switch = Tauscht Hosts und Jobs aus, sprich man weißt dann einem Host mehrere Jobs zu
+
+Beispiel Aufruf per Powershell oder CMD:
+powershell.exe -ep bypass -windowstyle hidden -noprofile -file "C:\...\Scheduler.ps1"
+
+Beispiele Parameter:
+
+Silent:
+-Job "Jobname" -Hosts "PC Name 1, PC-Name-2, 3.er PC, PCName4" -Wann "20-04-2025 07:06" -Silent
+
+Remote:
+-Job "Jobname" -Hosts "PC Name 1, PCName2, PC-Name-3" -Wann "20-04-2025 07:06" -RemoteFQDN "Server.domain.topleveldomain"
+
+Jobs an Host zuweisen (Switched):
+-Job "Hostname" -Hosts "Jobname1, Jobname(2)!, Job 3" -Switched -Wann "20-04-2025 07:06" -S
+
+Soft-Ausführung:
+-Job "Jobname" -Hosts "PC Name 1, PC-Name-2, PC-Name-3" -Wann "20-04-2025 07:06" -NoTaskForce -NoJobNeustart -S
+
+Spalter (Host-Array durch '#!\' trennen):
+-Job "Jobname" -Hosts "PC Name 1 # PC-Name-2 # 3.er PC # PCName4" -Spalter "#" -Wann "20-04-2025 07:06" -S
+
+So viele wie gehen (Servername muss angepasst werden):
+-Job "PC-Name" -Hosts "Job1; Job2" -Spalter ";" -Switch -Wann "20-04-2025 07:06" -NoTaskForce -NoJobNeustart -Silent -LogPfad "C:\Temp" -LogName "Test.log" -ErrorLogPfad "C:\Fehlerlogs\" -ErrorLogName "ErrorTest.log" -RemoteFQDN "servername" -TaskPath "\Test\" -TempLogFile "%appdata%"
