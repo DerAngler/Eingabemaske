@@ -14,7 +14,7 @@ param(
     [string]$ErrorLogName = "",
     [string]$RemoteFQDN = $null,
     [string]$TaskPath = "",
-    [string]$PersLogFile = ""
+    [string]$TempLogFile = ""
 )
 ###############################################################
 ##### Diese Variablen können nach Bedarf angepasst werden #####
@@ -36,7 +36,7 @@ $RemoteFQDN = $null #$null oder leer = localhost
 $TaskPath = "\JobScheduler\"
 
 #Dateipfad für das persönliche / temporäre Logfile
-$PersLogFile = "C:\Temp\" + $(Get-Date -Format "yyyyMMdd") + "_fehlgeschlagene_Clients.log"
+$TempLogFile = "C:\Temp\" + $(Get-Date -Format "yyyyMMdd") + "_fehlgeschlagene_Clients.log"
 
 ###############################################################
 ################### Ab hier nix mehr ändern ###################
@@ -364,14 +364,10 @@ function Zuweisung_einplanen {
             $NoTaskForce = $false            
         }
     }
-    #"Am Ende"'-Fenster
+    #"Am Ende"-Fenster
     if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
         if($ErrorCounter -gt 0){
-            if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Fehler aufgetreten!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`nSollen die fehlgeschlagenen Clients aufgelistet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
-                if(([System.Windows.Forms.MessageBox]::Show("$($ErrorHosts.split(' '))`r`n`r`nSollen diese in $PersLogFile geschrieben werden?","Fehlgeschlagene Hostnamen",4)) -eq "Yes"){
-                    $($ErrorHosts.split(' ')) >> $PersLogFile
-                }
-            }
+            [System.Windows.Forms.MessageBox]::Show("$ErrorCounter Fehler aufgetreten!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt?","$ErrorCounter Fehler sind aufgetreten",0)
         }else{
             [System.Windows.Forms.MessageBox]::Show("Alle ($Counter) Tasks wurden erfolgreich angelegt","$Counter Task(s) erstellt",0)
         }
