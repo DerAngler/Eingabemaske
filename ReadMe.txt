@@ -1,6 +1,6 @@
 Powershell-Scheduler
 
-Eine einzelnes Powershell-Skript, mit welchem Tasks im Aufgabenplaner eines Zielservers erstellt und verwaltet werden können.
+Ein einzelnes Powershell-Skript, mit welchem Tasks im Aufgabenplaner eines Zielservers erstellt und verwaltet werden können.
 
 Simple Nutzung per GUI möglich. Einfach das Skript im Ganzen kopieren und in einer Powershell ausführen / aufrufen
 (Je nach Zielsystem ggf. Ausführung mit entsprechenden Berechtigungen oder als Admin nötig)
