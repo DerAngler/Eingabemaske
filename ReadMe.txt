@@ -27,7 +27,7 @@ Für die Nutzung per Kommandozeile gibt es folgende Parameter:
 [string]$TempLogFile = Dateipfad, in den ein extra Log geschrieben werdan kann (Bisher nur bei GUI)
 
 Beispiel Ausführung per Powershell oder Batch:
-powershell.exe -ep bypass -noprofile -file "C:\...\Scheduler.ps1" -...
+powershell.exe -ep bypass -noprofile -file "C:\...\Scheduler.ps1"
 
 Beispiele Parameter:
 
