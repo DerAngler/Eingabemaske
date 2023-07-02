@@ -2,7 +2,7 @@
 ----------------------------------
 [string]$Job = "Patchupdates"
 [string]$Hosts = "PC1 PC2 PC3"
-[string]$Wann = "19971226_2307"
+[string]$Wann = "26-12-1997 16:20" #"1997-12-26 16:20" geht auch
 [switch]$NoJobNeustart = $false,
 [switch]$S = $false,
 [switch]$Silent = $false,
@@ -32,3 +32,6 @@ $ErrorLogName = Name des Error-Logs
 $RemoteFQDN = Das ist der Verbindungsparameter für eine CIM-Session. Für eine localhost AUsführung bitte $null angeben
 $TaskPath = Pfad im Aufgabenplaner, in den die Tasks geschrieben werden und der "Tasks"-Button seine ausliest
 $TempLogFile = Dateipfad, in den bei einer non-Silent-Ausführung auf Wunsch eine Liste fehlgeschlagener Hosts exportiert werden
+
+Beispiel Silent Taskanlage per Powershell oder CMD:
+powershell.exe -ep bypass -windowstyle hidden -noprofile -file "C:\...\Scheduler.ps1" -Job "TestJob" -Hosts "PC Name 1; PC Name 2; ..." -Wann "25-05-2025 04:20" -Silent

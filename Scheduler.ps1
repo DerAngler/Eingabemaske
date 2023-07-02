@@ -1,7 +1,7 @@
 ﻿#Region Variablen und Parameter
 param(
     [string]$Job = "",
-    [string]$Hosts = @(""),
+    [array]$Hosts = @(""),
     [string]$Wann = "",
     [switch]$NoJobNeustart = $false,
     [switch]$S = $false,
@@ -22,9 +22,9 @@ param(
 
 # Log definieren
 $LogPfad = "C:\Logs\Github\Scheduler\"
-$LogName = $(Get-Date -Format "yyyyMMdd") + "Scheduler.log"
+$LogName = $(Get-Date -Format "yyyyMMdd") + "_Scheduler.log"
 $ErrorLogPfad = $LogPfad
-$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "Scheduler.log"
+$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_ERROR_Scheduler.log"
 
 # Error Meldungen in powershell.exe verstecken
 $ErrorActionPreference = "SilentlyContinue"
@@ -249,17 +249,25 @@ $mainForm.Controls.Add($ImportHosts)
 
 #Region Zuweisung einplanen
 function Zuweisung_einplanen {
-    # Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt wurde
-    if(($mainForm.ActiveControl.Text -ne "Zuweisung einplanen")){
-        exit
+    # Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt oder einer der Silent-Parameter genutzt wurde
+    # Zudem müssem manche Variablen je nach Silent oder GUI Ausführung anders aufgebaut werden
+    if(!($Silent -OR $S)){
+        if(($mainForm.ActiveControl.Text -ne "Zuweisung einplanen")){
+            exit
+        }else{#Wenn GUI
+            $HostArray = $($Hostnames.Text) -split "`r`n"
+            $Jobname = $($JobFeld.Text)
+            $Zeitpunkt = Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0
+        }
+    }else{#Wenn Silent
+        $HostArray = ($Hosts -split ";")
+        $Jobname = $Job
+        $Zeitpunkt = Get-Date -Date $Wann
     }
-
-    # Variablen, welche Für jeden Host gleich bleiben in der Schleife
-    $HostArray = $($Hostnames.Text) -split "`r`n"
-    $Jobname = $($JobFeld.Text)
+    Write-Host $Hosts
+    # Variablen, die für jeden Host gleich bleiben in der Schleife
+    
     $Neustart = $($Neustart.Checked)
-    $Zeitpunkt = [datetime]::ParseExact($Wann,'ddMMyyyy_HHmmss',$null)
-    $Zeitpunkt = Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0
     $Trigger = New-ScheduledTaskTrigger -Once -At $Zeitpunkt
     $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
     $Initiator = whoami
@@ -290,7 +298,7 @@ function Zuweisung_einplanen {
     Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $LogDatei
     Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $ErrorLogDatei
 
-    # Variablen, welche sich ändern pro Schleifendurchlauf
+    # Variablen, die sich ändern pro Schleifendurchlauf
     foreach($Hostname in $HostArray){
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
@@ -344,7 +352,7 @@ function Zuweisung_einplanen {
                 $ErrorCounter++
                 $ErrorHosts += @($Hostname)
                 if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
-                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt","Fehler!",4)) -eq "Yes"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das Log des zugehörigen Task geöffnet werden?","Fehler!",4)) -eq "Yes"){
                         $Log | Out-GridView -Title "Fehlgeschlagener Hostname"
                     }
                 }
@@ -367,7 +375,9 @@ function Zuweisung_einplanen {
     #"Am Ende"-Fenster
     if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
         if($ErrorCounter -gt 0){
-            [System.Windows.Forms.MessageBox]::Show("$ErrorCounter Fehler aufgetreten!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt?","$ErrorCounter Fehler sind aufgetreten",0)
+            if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Ausführung ist auf Fehler gelaufen!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das eben gemeinte Log direkt im Notepad geöffnet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
+                notepad.exe $ErrorLogDatei
+            }
         }else{
             [System.Windows.Forms.MessageBox]::Show("Alle ($Counter) Tasks wurden erfolgreich angelegt","$Counter Task(s) erstellt",0)
         }
