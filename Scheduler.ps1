@@ -1,4 +1,7 @@
 ﻿#Region Variablen und Parameter
+###############################################################
+##### Diese Variablen können nach Bedarf angepasst werden #####
+###############################################################
 param(
     [string]$Job = "",
     [array]$Hosts = @(""),
@@ -8,36 +11,17 @@ param(
     [switch]$Silent = $false,
     [switch]$Darkmode = $false,
     [switch]$NoTaskForce = $false,
-    [string]$LogPfad = "",
-    [string]$LogName = "",
-    [string]$ErrorLogPfad = "",
-    [string]$ErrorLogName = "",
+    [string]$LogPfad = "C:\Logs\Github\Scheduler\",
+    [string]$LogName = $(Get-Date -Format "yyyyMMdd") + "_Scheduler.log",
+    [string]$ErrorLogPfad = $LogPfad,
+    [string]$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_ERROR_Scheduler.log",
     [string]$RemoteFQDN = $null,
-    [string]$TaskPath = "",
-    [string]$TempLogFile = ""
+    [string]$TaskPath = "\EigenerScheduler\",
+    [string]$TempLogFile = "C:\Temp\" + $(Get-Date -Format "yyyyMMdd") + "_fehlgeschlagene_Clients.log",
+    [switch]$Switch = $false,
+    [string]$Spalter = ","
 )
-###############################################################
-##### Diese Variablen können nach Bedarf angepasst werden #####
-###############################################################
-
-# Log definieren
-$LogPfad = "C:\Logs\Github\Scheduler\"
-$LogName = $(Get-Date -Format "yyyyMMdd") + "_Scheduler.log"
-$ErrorLogPfad = $LogPfad
-$ErrorLogName = $(Get-Date -Format "yyyyMMdd") + "_ERROR_Scheduler.log"
-
-# Error Meldungen in powershell.exe verstecken
 $ErrorActionPreference = "SilentlyContinue"
-
-# Cim-Session Endpoint (Bei Planlosigkeit einfach so lassen)
-$RemoteFQDN = $null #$null oder leer = localhost 
-
-# Name vom Pfad/Ordner in der Aufgabenplanung des Remote-Servers
-$TaskPath = "\JobScheduler\"
-
-#Dateipfad für das persönliche / temporäre Logfile
-$TempLogFile = "C:\Temp\" + $(Get-Date -Format "yyyyMMdd") + "_fehlgeschlagene_Clients.log"
-
 ###############################################################
 ################### Ab hier nix mehr ändern ###################
 ###############################################################
@@ -60,6 +44,17 @@ function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box) {
             $Hostnames.Text += "$($Zeile.Trim())`r`n"
         }
     }
+}
+
+# Switch-Button soll $Jobname und $Hosts tauschen, sodass $Hosts = JobNabemArray ist und $Jobname = ein Host
+function Switch_Variablen {
+    param (
+        $Jobname,
+        $HostArray
+    )
+    $Temp_Switch = $HostArray
+    $HostArray = $Jobname
+    $Jobname = $Temp_Switch
 }
 
 function Darkmode {
@@ -104,7 +99,7 @@ $mainForm.Controls.Add($JobnameLabel)
 # Hostnames Label
 $HostnamesLabel = New-Object System.Windows.Forms.Label
 $HostnamesLabel.Text = "Hostnames"
-$HostnamesLabel.Location = "5, 47"
+$HostnamesLabel.Location = "5, 46"
 $HostnamesLabel.Height = 22
 $HostnamesLabel.Width = 95
 Darkmode($HostnamesLabel)
@@ -187,7 +182,7 @@ $mainForm.Controls.Add($Uhrzeit)
 
 # Neustart CheckBox
 $Neustart = New-Object System.Windows.Forms.CheckBox
-$Neustart.Location = "242, 248"
+$Neustart.Location = "241, 248"
 $Neustart.Checked = $TRUE
 $mainForm.Controls.Add($Neustart)
 
@@ -202,7 +197,7 @@ $mainForm.Controls.Add($Rueckinfo)
 
 # Zuweisen Button
 $Zuweisen = New-Object System.Windows.Forms.Button
-$Zuweisen.Location = "5, 313"#282
+$Zuweisen.Location = "5, 313"
 $Zuweisen.Height = "32"
 $Zuweisen.Width = "252"
 $Zuweisen.Text = "Zuweisung einplanen"
@@ -213,7 +208,7 @@ $mainForm.Controls.Add($Zuweisen)
 
 # Task-Button
 $TasksButton = New-Object System.Windows.Forms.Button
-$TasksButton.Location = "5, 350"
+$TasksButton.Location = "5, 349"
 $TasksButton.Width = "124"
 $TasksButton.Text = "Tasks"
 $TasksButton.BackColor = "White"
@@ -223,7 +218,7 @@ $mainForm.Controls.Add($TasksButton)
 
 # Logs-Button
 $LogsButton = New-Object System.Windows.Forms.Button
-$LogsButton.Location = "133, 350"
+$LogsButton.Location = "133, 349"
 $LogsButton.Width = "124"
 $LogsButton.Text = "Logs"
 $LogsButton.BackColor = "White"
@@ -233,7 +228,7 @@ $mainForm.Controls.Add($LogsButton)
 
 # Import Hostnames from File - Button
 $ImportHosts = New-Object System.Windows.Forms.Button
-$ImportHosts.Location = "17, 70"
+$ImportHosts.Location = "17, 80"
 $ImportHosts.Height = "20"
 $ImportHosts.Width = "65"
 $ImportHosts.Font = ("Courier New, 10")
@@ -243,30 +238,58 @@ $ImportHosts.ForeColor = "Black"
 $ImportHosts.add_Click({Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Hostnames)})
 $mainForm.Controls.Add($ImportHosts)
 
+# Switch CheckBox
+$SwitchCB = New-Object System.Windows.Forms.CheckBox
+$SwitchCB.Location = "8, 27"
+$SwitchCB.Font = ("Courier New, 10")
+$SwitchCB.Text = "Switch"
+$SwitchCB.Add_CheckStateChanged({
+    if($SwitchCB.checked){
+        $HostnamesLabel.Text = "Jobnames"
+        $JobnameLabel.Text = "Hostname"
+        $Hostnames.Width = "1900"
+        $mainForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
+        $Switch = $true
+    } else {
+        $HostnamesLabel.Text = "Hostnames"
+        $JobnameLabel.Text = "Jobname"
+        $Hostnames.Width = "155"
+        $mainForm.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Fixed3D
+        $mainForm.Height = 420
+        $mainForm.Width = 282
+        $Switch = $false
+   }  
+})
+$mainForm.Controls.Add($SwitchCB)
+
  #Endregion GUI-Elemente
 
 #Endregion GUI
 
 #Region Zuweisung einplanen
 function Zuweisung_einplanen {
+    #Switch-Button
+    if($Switch -eq $true){
+        Switch_Variablen($Jobname, $Hosts)
+    }
     # Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt oder einer der Silent-Parameter genutzt wurde
     # Zudem müssem manche Variablen je nach Silent oder GUI Ausführung anders aufgebaut werden
     if(!($Silent -OR $S)){
-        if(($mainForm.ActiveControl.Text -ne "Zuweisung einplanen")){
+        if(($mainForm.ActiveControl.Text -ne "Zuweisung einplanen")){#Cancle-Buttob tatsächlich canclen lassen
             exit
         }else{#Wenn GUI
             $HostArray = $($Hostnames.Text) -split "`r`n"
-            $Jobname = $($JobFeld.Text)
-            $Zeitpunkt = Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0
+            $Jobname = $($JobFeld.Text).Trim()
+            $Zeitpunkt = $(Get-Date -Date $Datum.Text -Hour $Uhrzeit.Value.Hour -Minute $Uhrzeit.Value.Minute -Second 0)
         }
     }else{#Wenn Silent
-        $HostArray = ($Hosts -split ";")
+        $HostArray = ($Hosts -split "$Spalter")
         $Jobname = $Job
-        $Zeitpunkt = Get-Date -Date $Wann
+        $Zeitpunkt = $(Get-Date -Date $Wann)
+        $Rueckinfo.SelectedIndex = 4
     }
-    Write-Host $Hosts
+
     # Variablen, die für jeden Host gleich bleiben in der Schleife
-    
     $Neustart = $($Neustart.Checked)
     $Trigger = New-ScheduledTaskTrigger -Once -At $Zeitpunkt
     $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
@@ -274,6 +297,7 @@ function Zuweisung_einplanen {
     $InitiatorShort = $Initiator.split("\")[1]
     $Counter = 0
     $ErrorCounter = 0
+    $SkippedCounter = 0
     $ErrorHosts = @()
 
     # CimSession aufbauen
@@ -295,31 +319,59 @@ function Zuweisung_einplanen {
     if(!(Test-Path $ErrorLogDatei)){
         New-Item $ErrorLogDatei
     }
-    Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $LogDatei
-    Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $ErrorLogDatei
 
+    # Check, ob Eingaben / Parameter valide sind
+    if((Get-Date) -gt $Zeitpunkt){
+        [System.Windows.Forms.MessageBox]::Show("Der angegebene Zeitpunkt liegt in der Vergangenheit.`r`nBitte wählen Sie einen Zeitpunkt aus der Zukunft aus.","Inakzeptabler Zeitpunkt",0)
+        $InvalideWerte = $true
+        $HostArray = ""
+    }
+    if([string]::IsNullOrEmpty($Jobname)){
+        $InvalideWerte = $true
+        $HostArray = ""
+    }
+    if([array]::IsNullOrEmpty($HostArray)){
+        $InvalideWerte = $true
+    }
+    
+    Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $LogDatei
+    
     # Variablen, die sich ändern pro Schleifendurchlauf
     foreach($Hostname in $HostArray){
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
             $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-windowstyle hidden -ep bypass -noprofile -file 'PFAD_ZU_SKRIPT' -Parameter1 'Wert1' -Switch" 
-            $TaskName = ($InitiatorShort+" - "+$Hostname+" - "+$Jobname)
+            $TaskName_Switched = ($InitiatorShort+" - "+$Jobname+" - "+$Hostname)
+            $TaskName_Unswitched = ($InitiatorShort+" - "+$Hostname+" - "+$Jobname)
+            if($Switch -eq $true){
+                $TaskName = $TaskName_Switched
+            }else{
+                $TaskName = $TaskName_Unswitched
+            }
 
-            # Check, ob Task Name bereits vergeben ist und ob der überschrieben werden darf
-            if(Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName -ErrorAction SilentlyContinue){
-                if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
-                    if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
-                    Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
-                    }else{
-                        $NoTaskForce = $true
+            # Check, ob Task Name bereits vorhanden ist und ob der überschrieben werden darf unter Berücksichtigung vom Switch-Button
+            if(Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName_Unswitched -ErrorAction SilentlyContinue){
+                if($($Rueckinfo.Text) -eq "Für jeden Host" -OR $($Rueckinfo.Text) -eq "Fehler + Gesamt"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname_Unswitched' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
+                        Unregister-ScheduledTask -CimSession $CimSession -TaskName $Taskname_Unswitched -Confirm:$false
                     }
-                }else{
-                    Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName -Confirm:$false
+                }
+                if($NoTaskForce -eq $false){
+                    Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName_Unswitched -Confirm:$false
+                }
+            }elseif(Get-ScheduledTask -CimSession $CimSession -TaskName $TaskName_Switched -ErrorAction SilentlyContinue){
+                if($($Rueckinfo.Text) -eq "Für jeden Host" -OR $($Rueckinfo.Text) -eq "Fehler + Gesamt"){
+                    if(([System.Windows.Forms.MessageBox]::Show("Der Task '$Taskname_Switched' ist bereits vorhanden, soll der Eintrag überschrieben werden?","Benutzerabfrage",4)) -eq "Yes"){
+                        Unregister-ScheduledTask -CimSession $CimSession -TaskName $Taskname_Switched -Confirm:$false
+                    }
+                }
+                if($NoTaskForce -eq $false){
+                    Unregister-ScheduledTask -CimSession $CimSession -TaskName $TaskName_Switched -Confirm:$false
                 }
             }
 
             # Task anlegen
-            if(($Hostname.Count) -eq 1 -and ($Jobname.Count) -eq 1){
+            if(($Hostname.Count) -eq 1 -AND ($Jobname.Count) -eq 1 -AND ($InvalideWerte -ne $true)){
                 Register-ScheduledTask -CimSession $CimSession -Action $Aktion -Trigger $Trigger -Taskpath $Taskpath -TaskName $TaskName -Principal $Principal #-ErrorAction SilentlyContinue
             }
 
@@ -328,9 +380,12 @@ function Zuweisung_einplanen {
                 "Erstellt am:" = $(Get-Date).ToString()
                 "Hostname:" = $Hostname 
                 "Jobname:" = $Jobname
-                "Neustart:" = $Neustart
-                "Zeitpunkt:" = $($Zeitpunkt.ToString())
+                "JobNeustart:" = $Neustart
+                "Zuweisungs-Zeitpunkt:" = $($Zeitpunkt.ToString())
+                "Valide Werte erhalten" = $((!$InvalideWerte))
                 "Initiator:" = $Initiator
+                "Job und Hosts getauscht:" = $Switch
+                "TaskForce" = $(!($NoTaskForce))
             }
 
             # Check ob Task wirklich erstellt wurde und Rückinfo generieren
@@ -345,15 +400,17 @@ function Zuweisung_einplanen {
                 $Log += @{"Task erstellt" =  "Bereits vorhanden und sollte nicht überschrieben werden"}
                 if($Rueckinfo.Text -eq "Für jeden Host"){
                     [System.Windows.Forms.MessageBox]::Show("Der Task wurde auf Ihren Wunsch nicht überschrieben.","Alles beim Alten!",0)
+                    $SkippedCounter++
                 }
             }else{
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
+                Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $ErrorLogDatei
                 $ErrorLog = $Log
                 $ErrorCounter++
                 $ErrorHosts += @($Hostname)
                 if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
                     if(([System.Windows.Forms.MessageBox]::Show("Es ist ein Fehler aufgetreten!`r`n`r`nSoll der entsprechende Log-Eintrag geöffnet werden?`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das Log des zugehörigen Task geöffnet werden?","Fehler!",4)) -eq "Yes"){
-                        $Log | Out-GridView -Title "Fehlgeschlagener Hostname"
+                        $Log | Out-GridView -Title "Fehlgeschlagener Host"
                     }
                 }
             }
@@ -369,26 +426,35 @@ function Zuweisung_einplanen {
             $Check.Clear()
             $Log.Clear()
             $ErrorLog.Clear()
-            $NoTaskForce = $false            
         }
     }
     #"Am Ende"-Fenster
-    if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
-        if($ErrorCounter -gt 0){
-            if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Ausführung ist auf Fehler gelaufen!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das eben gemeinte Log direkt im Notepad geöffnet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
-                notepad.exe $ErrorLogDatei
+    if($Silent -ne $true){
+        if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
+            if($ErrorCounter -gt 0){
+                if(([System.Windows.Forms.MessageBox]::Show("$ErrorCounter Ausführung ist auf Fehler gelaufen!`r`n$Counter Ausführungen war(en) erfolgreich.`r`n`r`n`r`n`r`nWenn im Log alle Variablen gefüllt sind, dann wird das Tool wahrscheinlich nicht als Admin oder mit zu wenigen Rechten ausgeführt. Soll das eben gemeinte Log direkt im Notepad geöffnet werden?","$ErrorCounter Fehler sind aufgetreten",4)) -eq "Yes"){
+                    notepad.exe $ErrorLogDatei
+                }
+            }elseif($SkippedCounter -gt 0){
+                if(([System.Windows.Forms.MessageBox]::Show("Alle $Counter Task(s) wurden erfolgreich angelegt`r`n$SkippedCounter Task(s) sollten nicht überschrieben werden (/NoTaskForce)`r`n`r`nSoll das Log geöffnet werden?","$Counter Task(s) erstellt",4)) -eq "Yes"){
+                    notepad.exe $LogDatei
+                }
+            }else{
+                [System.Windows.Forms.MessageBox]::Show("Alle $Counter Task(s) wurden erfolgreich angelegt","$Counter Task(s) erstellt",0)
             }
-        }else{
-            [System.Windows.Forms.MessageBox]::Show("Alle ($Counter) Tasks wurden erfolgreich angelegt","$Counter Task(s) erstellt",0)
         }
     }
     #Eingegebene Werte nach Zuweisungen nullen
-    $Hostnames.Clear()
-    $JobFeld.Clear()
-    $Datum.ResetText()
-    $Uhrzeit.ResetText()
+    $Counter.Clear()
     $ErrorCounter.Clear()
-
+    $Skipped.Clear()
+    if($InvalideWerte -ne $true){
+        $Hostnames.Clear()
+        $JobFeld.Clear()
+        $Datum.ResetText()
+        $Uhrzeit.ResetText()
+    }
+    $InvalideWerte.Clear()
 }
 #Endregion Zuweisung einplanen
 
