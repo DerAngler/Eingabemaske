@@ -15,6 +15,8 @@
 [string]$RemoteFQDN = $null
 [string]$TaskPath = "\JobScheduler\",
 [string]$TempLogFile = "C:\Temp\tmpLog_Scheduler.log"
+[switch]$Switch = $false
+[string]$Spalter = ","
 
 Erklärung der Parameter:
 $Job = Name des Jobs, Skripts, Programm, etc
@@ -32,6 +34,8 @@ $ErrorLogName = Name des Error-Logs
 $RemoteFQDN = Das ist der Verbindungsparameter für eine CIM-Session. Für eine localhost AUsführung bitte $null angeben
 $TaskPath = Pfad im Aufgabenplaner, in den die Tasks geschrieben werden und der "Tasks"-Button seine ausliest
 $TempLogFile = Dateipfad, in den bei einer non-Silent-Ausführung auf Wunsch eine Liste fehlgeschlagener Hosts exportiert werden
+$Switch = Tauscht Hosts und Jobs aus, sprich man weißt dann einem Host mehrere Jobs zu
+$Spalter = Das Trennzeichen, mit welchem die Hosts aus einer Zeile in eigene Werte gesplited werden
 
 Beispiel Silent Taskanlage per Powershell oder CMD:
-powershell.exe -ep bypass -windowstyle hidden -noprofile -file "C:\...\Scheduler.ps1" -Job "TestJob" -Hosts "PC Name 1; PC Name 2; ..." -Wann "25-05-2025 04:20" -Silent
+powershell.exe -ep bypass -windowstyle hidden -noprofile -file "C:\...\Scheduler.ps1" -Job "TestJob" -Hosts "PC Name 1; PC Name 2; ..." -Spalter ";" -Wann "25-05-2025 04:20" -NoTaskForce -Silent
