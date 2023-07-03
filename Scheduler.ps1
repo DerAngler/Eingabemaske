@@ -1,4 +1,4 @@
-﻿#Region Variablen und Parameter
+﻿#Region Parameter
 ###############################################################
 ######## Diese Parameter-Werte können angepasst werden ########
 ###############################################################
@@ -28,7 +28,7 @@ $ErrorActionPreference = "SilentlyContinue"
 ###############################################################
 ################### Ab hier nix mehr ändern ###################
 ###############################################################
-#Endregion Variablen
+#Endregion Parameter
 
 #Region Funktionen
 function Datei_auswählen() {
