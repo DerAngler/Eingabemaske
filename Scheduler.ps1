@@ -396,15 +396,18 @@ function Zuweisung_einplanen {
 
             # Log erstellen und bisher bekannte Infos reinschreiben
             $Log = @{
-                "Erstellt am:" = $(Get-Date).ToString()
-                "Hostname:" = $Hostname 
-                "Jobname:" = $Jobname
-                "JobNeustart:" = $Neustart
-                "Zuweisungs-Zeitpunkt:" = $($Zeitpunkt.ToString())
+                "Erstellt am" = $(Get-Date).ToString()
+                "Hostname" = $Hostname 
+                "Jobname" = $Jobname
+                "JobNeustart" = $Neustart
+                "Zuweisungs-Zeitpunkt" = $($Zeitpunkt.ToString())
                 "Valide Werte erhalten" = $((!$InvalideWerte))
-                "Initiator:" = $Initiator
-                "Job und Hosts getauscht:" = $Switch
+                "Initiator" = $Initiator
+                "Switched" = $Switch
                 "TaskForce" = $(!($NoTaskForce))
+                "Execute" = $Aktion.Execute
+                "Argument" = $Aktion.Arguments
+                "Taskpath" = $Taskpath
             }
 
             # Check ob Task wirklich erstellt wurde und Rückinfo generieren
@@ -435,7 +438,7 @@ function Zuweisung_einplanen {
             }
 
             # Log schreiben
-            Write-Output $Log >> $LogDatei
+            Write-Output $($Log | Sort-Object Name)  >> $LogDatei
             Write-Output $ErrorLog >> $ErrorLogDatei
 
             #Relevante Variablen nullen in jedem Schleifen durchlaufen
