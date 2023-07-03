@@ -6,6 +6,8 @@ param(
     [string]$Job = "",
     [array]$Hosts = @(""),
     [string]$Wann = "",
+    [string]$Execute = "powershell.exe",
+    [string]$Argument = "-windowstyle hidden -ep bypass -noprofile -file 'PFAD_ZU_SKRIPT' -Parameter1 'Wert1' -Switch",
     [switch]$NoJobNeustart = $false,
     [switch]$S = $false,
     [switch]$Silent = $false,
@@ -334,26 +336,30 @@ function Zuweisung_einplanen {
     }
 
     # Check, ob Eingaben / Parameter valide sind
-    if((Get-Date) -gt $Zeitpunkt){
-        [System.Windows.Forms.MessageBox]::Show("Der angegebene Zeitpunkt liegt in der Vergangenheit.`r`nBitte wählen Sie einen Zeitpunkt aus der Zukunft aus.","Inakzeptabler Zeitpunkt",0)
-        $InvalideWerte = $true
-        $HostArray = ""
+    if(!($Silent -eq $true -or $S -eq $true -or $Rueckinfo.Task -eq "Nur am Ende")){
+        if([string]::IsNullOrEmpty($HostArray)){
+            [System.Windows.Forms.MessageBox]::Show("Es wurden keine Hostnamen angegeben","Hostname fehlt",0)
+            $InvalideWerte = $true
+        }
+        if([string]::IsNullOrEmpty($Jobname)){
+            [System.Windows.Forms.MessageBox]::Show("Es wurde kein Jobname angegeben","Jobname fehlt",0)
+            $InvalideWerte = $true
+            $HostArray = ""
+        }
+        if((Get-Date) -gt $Zeitpunkt){
+            [System.Windows.Forms.MessageBox]::Show("Der angegebene Zeitpunkt liegt in der Vergangenheit.`r`nBitte wählen Sie einen Zeitpunkt aus der Zukunft aus.","Inakzeptabler Zeitpunkt",0)
+            $InvalideWerte = $true
+            $HostArray = ""
+        }
     }
-    if([string]::IsNullOrEmpty($Jobname)){
-        $InvalideWerte = $true
-        $HostArray = ""
-    }
-    if([array]::IsNullOrEmpty($HostArray)){
-        $InvalideWerte = $true
-    }
-    
-    Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $LogDatei
+
+    Write-Output "########## $(Get-Date -Format "hh:mm:ss") - NEUE AUSFÜHRUNG ##########" >> $LogDatei
     
     # Variablen, die sich ändern pro Schleifendurchlauf
     foreach($Hostname in $HostArray){
         $Hostname = $Hostname.Trim()
         if($($Hostname.Length) -ne 0){
-            $Aktion = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-windowstyle hidden -ep bypass -noprofile -file 'PFAD_ZU_SKRIPT' -Parameter1 'Wert1' -Switch" 
+            $Aktion = New-ScheduledTaskAction -Execute $Execute -Argument $Argument 
             $TaskName_Switched = ($InitiatorShort+" - "+$Jobname+" - "+$Hostname)
             $TaskName_Unswitched = ($InitiatorShort+" - "+$Hostname+" - "+$Jobname)
             if($Switch -eq $true){
@@ -417,7 +423,7 @@ function Zuweisung_einplanen {
                 }
             }else{
                 $Log += @{"Task erstellt" = "Fehlgeschlagen"}
-                Write-Output "########## NEUE AUSFÜHRUNG ##########" >> $ErrorLogDatei
+                Write-Output "########## $(Get-Date -Format "hh:mm:ss") - NEUE AUSFÜHRUNG ##########" >> $ErrorLogDatei
                 $ErrorLog = $Log
                 $ErrorCounter++
                 $ErrorHosts += @($Hostname)
