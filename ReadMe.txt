@@ -26,7 +26,7 @@ Für die Nutzung per Kommandozeile gibt es folgende Parameter:
 [string]$ErrorLogName = Name des Error-Logs
 [string]$RemoteFQDN = Host, auf dem die Tasks angelegt werden sollen. Für eine localhost Ausführung bitte $null angeben
 [string]$TaskPath = Pfad im Aufgabenplaner, in dem die Tasks geschrieben werden und der "Tasks"-Button seine ausliest
-[string]$TempLogFile = Dateipfad, in den ein extra Log geschrieben werdan kann (Bisher nur bei GUI)
+[string]$TempLogFile = Dateipfad, in den ein extra Log geschrieben werden kann (Bisher nur bei GUI)
 
 Und für die Nutzung der GUI gibt es die folgenden Parameter:
 
