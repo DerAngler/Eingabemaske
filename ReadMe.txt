@@ -1,4 +1,4 @@
-Powershell-Scheduler
+Powershell-Remote-Scheduler-Tool (Powershell 5.x und .Net-Framewort 4.x benötigt)
 
 Ein einzelnes Powershell-Skript, mit welchem Tasks im Aufgabenplaner eines Zielservers erstellt und verwaltet werden können.
 
@@ -60,10 +60,10 @@ Spalter (Host-Array durch '#' trennen):
 So viele wie gehen (Servername muss angepasst werden):
 -Job "PC-Name" -Hosts "Job1; Job2" -Spalter ";" -Switch -Wann "20-04-2025 07:06" -NoTaskForce -Execute "Powershell.exe" -Argument "-file 'C:\Beispiel.ps1'" -NoJobNeustart -Silent -LogPfad "C:\Temp" -LogName "Test.log" -ErrorLogPfad "C:\Fehlerlogs\" -ErrorLogName "ErrorTest.log" -RemoteFQDN "servername" -TaskPath "\Test\" -TempLogFile "%appdata%"
 
-##### Plan für v1.1 #####
 
-- GUI Erweiterung um 2 Textboxen > 1x $Execute 1x $Argument (Bisher nur im Skript oder in der .exe.config definierbar)
+##### Plan für v1.1 #####
+- GUI Erweitung um 1 Textbox für $RemoteFQDN (Bisher nur im Skript oder in der .exe.config definierbar)
+- GUI Erweiterung um 2 Textboxen > 1x $Execute und 1x $Argument (Bisher nur im Skript oder in der .exe.config definierbar)
 
 ##### Pläne für die v2.0 ##### (Wird evtl. nie kommen)
-
 - Möglichkeit Intervalle mit angeben zu können (Bisher werden Tasks immer nur zur einmaligen Ausführung angelegt)
