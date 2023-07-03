@@ -5,7 +5,6 @@ Ein einzelnes Powershell-Skript, mit welchem Tasks im Aufgabenplaner eines Ziels
 Simple Nutzung per GUI möglich. Einfach das Skript in einer Powershell ausführen / aufrufen
 (Je nach Zielsystem ggf. Ausführung mit entsprechenden Berechtigungen oder als Admin nötig)
 
-powershell.exe -ep bypass -windowstyle hidden -noprofile -file "C:\...\Scheduler.ps1" -Darkmode
 
 Für die Nutzung per Kommandozeile gibt es folgende Parameter:
 
@@ -32,6 +31,7 @@ Und für die Nutzung der GUI gibt es die folgenden Parameter:
 
 [switch]$Darkmode = Macht die mainForm() und alle Labels schwarz mit grauen Text. Also n Darkmode halt
 [switch]$Admin = Nötig, um über die GUI auch Tasks löschen zu dürfen
+
 
 
 Beispiel Ausführung per Powershell oder Batch:

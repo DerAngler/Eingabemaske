@@ -287,6 +287,7 @@ function Zuweisung_einplanen {
     if($Switch -eq $true){
         Switch_Variablen($Jobname, $Hosts)
     }
+
     # Skript nur Ausführen, wenn "Zuweisung einplanen" geklickt oder einer der Silent-Parameter genutzt wurde
     # Zudem müssem manche Variablen je nach Silent oder GUI Ausführung anders aufgebaut werden
     if(!($Silent -OR $S)){
@@ -450,6 +451,7 @@ function Zuweisung_einplanen {
             $ErrorLog.Clear()
         }
     }
+
     #"Am Ende"-Fenster
     if($Silent -ne $true -AND $S -ne $true){
         if($Rueckinfo.Text -eq "Für jeden Host" -OR $Rueckinfo.Text -eq "Nur am Ende" -OR $Rueckinfo.Text -eq "Fehler + Gesamt"){
@@ -466,6 +468,7 @@ function Zuweisung_einplanen {
             }
         }
     }
+
     #Eingegebene Werte nach Zuweisungen nullen
     $Counter.Clear()
     $ErrorCounter.Clear()
