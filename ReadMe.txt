@@ -1,4 +1,4 @@
-Powershell-Remote-Scheduler-Tool (Powershell 5.x und .Net-Framewort 4.x benötigt)
+Powershell-Remote-Scheduler-Tool (Powershell 5.x und .Net-Framework 4.x wird benötigt)
 
 Ein einzelnes Powershell-Skript, mit welchem Tasks im Aufgabenplaner eines Zielservers erstellt und verwaltet werden können.
 
