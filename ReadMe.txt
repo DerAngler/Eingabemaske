@@ -61,9 +61,9 @@ So viele wie gehen (Servername muss angepasst werden):
 -Job "PC-Name" -Hosts "Job1; Job2" -Spalter ";" -Switch -Wann "20-04-2025 07:06" -NoTaskForce -Execute "Powershell.exe" -Argument "-file 'C:\Beispiel.ps1'" -NoJobNeustart -Silent -LogPfad "C:\Temp" -LogName "Test.log" -ErrorLogPfad "C:\Fehlerlogs\" -ErrorLogName "ErrorTest.log" -RemoteFQDN "servername" -TaskPath "\Test\" -TempLogFile "%appdata%"
 
 
-##### Plan für v1.1 #####
-- GUI Erweitung um 1 Textbox für $RemoteFQDN (Bisher nur im Skript oder in der .exe.config definierbar)
-- GUI Erweiterung um 2 Textboxen > 1x $Execute und 1x $Argument (Bisher nur im Skript oder in der .exe.config definierbar)
+##### Idee für v1.1 #####(Wird evtl. nie kommen)
+- GUI Erweitung um 1 Textbox für $RemoteFQDN (Bisher nur per Startparameter oder halt im Skript selbst definierbar)
+- GUI Erweiterung um 2 Textboxen > 1x $Execute und 1x $Argument (Bisher nur per Startparameter oder halt im Skript selbst definierbar)
 
 ##### Pläne für die v2.0 ##### (Wird evtl. nie kommen)
 - Möglichkeit Intervalle mit angeben zu können (Bisher werden Tasks immer nur zur einmaligen Ausführung angelegt)
