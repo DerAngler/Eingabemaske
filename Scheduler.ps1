@@ -52,9 +52,9 @@ function Dateiinhalt_per_OpenFileDialog_in_ne_CheckBox_schreiben($Box) {
 function Tasks_anzeigen {
     if(Get-ScheduledTask -TaskPath $TaskPath){
         if($Admin -ne $TRUE){
-            Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "Scheduler"
+            Get-ScheduledTask -CimSession $CimSession -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "Scheduler"
         }else{
-            Get-ScheduledTask -TaskPath $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "Scheduler - Markierte Tasks werden mit 'OK' gelöscht!!!" -PassThru | Unregister-ScheduledTask -Confirm:$false
+            Get-ScheduledTask -TaskPath -CimSession $CimSession $TaskPath | Get-ScheduledTaskInfo | Out-GridView -Title "Scheduler - Markierte Tasks werden mit 'OK' gelöscht!!!" -PassThru | Unregister-ScheduledTask -Confirm:$false
         }
     }else{
         [System.Windows.Forms.MessageBox]::Show("Es konnten keine Tasks unter '$TaskPath' gefunden werden`r`n`r`nBitte das Skript mit einem anderen User oder als Admin ausführen`r`nWenn diese Meldung dennoch erscheint, gibt es wohl keine Tasks","Keine Tasks gefunden",0)
