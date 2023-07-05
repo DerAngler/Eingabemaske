@@ -85,7 +85,7 @@ function Darkmode {
 
 #Region GUI
 
- #Region GUI-Label
+#Region GUI-Label
 Add-Type -AssemblyName System.Windows.Forms
 [System.Windows.Forms.Application]::EnableVisualStyles() #Wenn der Kalender Button nicht geht, dann diese Zeile auskommentieren und neue PS Session starten
 
@@ -155,11 +155,9 @@ $RueckinfosLabel.Height = 22
 $RueckinfosLabel.Width = 95
 Darkmode($RueckinfosLabel)
 $mainForm.Controls.Add($RueckinfosLabel)
+#Endregion GUI-Label
 
- #Endregion GUI-Label
-
- #Region GUI-Elemente
-
+#Region GUI-Elemente
 # Jobname Auswahlfeld
 $JobFeld = New-Object System.Windows.Forms.Textbox
 $JobFeld.Location = "100, 7"
@@ -276,8 +274,7 @@ $SwitchCB.Add_CheckStateChanged({
    }  
 })
 $mainForm.Controls.Add($SwitchCB)
-
- #Endregion GUI-Elemente
+#Endregion GUI-Elemente
 
 #Endregion GUI
 
@@ -476,8 +473,7 @@ function Zuweisung_einplanen {
 }
 #Endregion Zuweisung einplanen
 
-# Region Ausführung starten mit aufgebauter CimSession
-
+#Region Ausführung starten mit aufgebauter CimSession
 # CimSession aufbauen
 if([string]::IsNullOrEmpty($RemoteFQDN)){
     $CimSession = New-CimSession
