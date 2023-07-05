@@ -316,13 +316,6 @@ function Zuweisung_einplanen {
     $SkippedCounter = 0
     $ErrorHosts = @()
 
-    # CimSession aufbauen
-    if([string]::IsNullOrEmpty($RemoteFQDN)){
-        $CimSession = New-CimSession
-    }else{
-        $CimSession = New-CimSession -ComputerName $RemoteFQDN -Credential Get-Credential
-    }
-
     # Log-Dateien erstellen und wenns Not tut auch Pfad
     $LogDatei = ($LogPfad+"\"+$LogName).Replace("\\","\")
     $ErrorLogDatei = ($ErrorLogPfad+"\"+$ErrorLogName).Replace("\\","\")
@@ -483,10 +476,19 @@ function Zuweisung_einplanen {
 }
 #Endregion Zuweisung einplanen
 
-#Region Ausführung starten
+# Resgion Ausführung starten mit aufgebauter CimSession
+
+# CimSession aufbauen
+if([string]::IsNullOrEmpty($RemoteFQDN)){
+    $CimSession = New-CimSession
+}else{
+    $CimSession = New-CimSession -ComputerName $RemoteFQDN -Credential Get-Credential
+}
+
+#Ausführung starten, je nach Silent-Parameter mit oder ohne GUI
 if($Silent -eq $true -or $S -eq $true){
     Zuweisung_einplanen
 }else{
     [void]$mainForm.ShowDialog()
 }
-#Endregion Ausführung starten
+#Endregion Ausführung starten mit aufgebauter CimSession
