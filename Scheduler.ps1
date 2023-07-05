@@ -476,7 +476,7 @@ function Zuweisung_einplanen {
 }
 #Endregion Zuweisung einplanen
 
-# Resgion Ausführung starten mit aufgebauter CimSession
+# Region Ausführung starten mit aufgebauter CimSession
 
 # CimSession aufbauen
 if([string]::IsNullOrEmpty($RemoteFQDN)){
